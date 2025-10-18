@@ -13,9 +13,6 @@
 #include "Defs.h"
 #include "DebugManager.h"
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
-
 // const char *SSID = "FRITZ!Box 5530 TQ";
 // const char *PASSWORD = "48757762422461960921";
 const char *SSID = "FASTWEB-ABA8E6";
@@ -186,32 +183,29 @@ const unsigned char startScreen [] PROGMEM = {
 	0x3f, 0xff, 0x01, 0x00, 0x00, 0x00, 0x1f, 0xff, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-char * arrayURL[9] = {
+String arrayURL[MAX_STATIONS] = {
   "http://mp3.ffh.de/radioffh/hqlivestream.mp3",
-  "http://5.63.151.52:7103/stream/1/",
+  "http://stream.laut.fm/numanme",
   "http://stream.governamerica.com:4030/index.html/128k.mp3%3Ftype=http&nocache=46079",
   "http://kvbstreams.dyndns.org:8000/wkvi-am",
   "http://hoth.alonhosting.com:1100/stream/1/",
   "http://radio.punjabrocks.com:9998/stream/1/",
   "http://server.mixify.in:8000/stream/1/",
   "http://142.4.219.8:8255/stream/1/",
-  "http://mehefil.no-ip.com/stream/1/"
+  "http://mehefil.no-ip.com/stream/1/",
 };
 
-String arrayStation[9] = {
-  "A",
-  "B",
-  "C",
-  "D",
+String arrayStation[MAX_STATIONS] = {
+  "Radio FFH",
+  "Numanme Radio",
+  "Govern America",
+  "WKVI Radio",
   "BollyHits Radio",
   "Taal Radio",
   "Mixify",
   "Bollywood Gold",
   "Mehefil Radio"
 };
-
-const int BTNA = 4;   // Play / Pause
-const int BTNB = 16;  // Station Select / Volume
 
 AudioGeneratorTalkie *talkie;          
 AudioGeneratorMP3 *mp3;
@@ -220,14 +214,12 @@ AudioFileSourceBuffer *buff;
 AudioOutputI2S *out;
 Adafruit_SH1106G display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-const int numCh = sizeof(arrayURL)/sizeof(char *);
-bool TestMode = false;
 uint32_t LastTime = 0;
 int playflag = 0;
 int ledflag = 0;
-float fgain = 10.0;
+float fgain = DEFAULT_GAIN;
 int sflag = 0;
-char *URL = arrayURL[sflag]; 
+String URL = arrayURL[sflag];
 String station = arrayStation[sflag];
 
 byte b=2;
@@ -236,16 +228,17 @@ bool inv=0;
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
   
-  pinMode(BTNA, INPUT_PULLUP);
-  pinMode(BTNB, INPUT_PULLUP);
+  pinMode(BTNCONF, INPUT_PULLUP);
+  pinMode(BTNBACK, INPUT_PULLUP);
+
   if(!display.begin(0x3C)) {
-    debugMsgInr("SSD1306 allocation failed");
+    debugMsgInr("OLED allocation failed");
   }else {
-    debugMsgInr("SSD1306 allocation OK!");
+    debugMsgInr("OLED allocation OK!");
   }
 
   debugMsgInr("Start up I2C...");
-  Wire.begin(21, 22, 400000L);
+  Wire.begin(SDAint, SCLint, 400000L);
 
   initwifi();
   display.clearDisplay();
@@ -254,9 +247,9 @@ void setup() {
   delay(1000);
   debugMsgInr("STATUS(System) Ready");
   out = new AudioOutputI2S(); // Output to externalDAC
-  out->SetPinout(33, 14, 25); // (int bclk, int lrc, int dout)
+  out->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT); // (int bclk, int lrc, int dout)
   out->SetOutputModeMono(true);
-  out->SetGain(fgain*0.5);
+  out->SetGain(fgain);
 }
 
 float n=0;
@@ -265,12 +258,12 @@ int frame;
 void loop() {
   static int lastms = 0;
   if (playflag == 0) {
-    if (digitalRead(BTNA) ==  LOW) {
+    if (digitalRead(BTNCONF) ==  LOW) {
       StartPlaying();
       playflag = 1;
     }
-    if (digitalRead(BTNB) ==  LOW) {
-      sflag = (sflag + 1) % numCh;
+    if (digitalRead(BTNBACK) ==  LOW) {
+      sflag = (sflag + 1) % MAX_STATIONS;
       URL = arrayURL[sflag];
       station = arrayStation[sflag];  
       debugMsgInr(station);
@@ -288,13 +281,14 @@ void loop() {
       if (millis() - lastms > 1000) {
         lastms = millis();
         debugMsgInrX("STATUS(Streaming) " + String(lastms) + " ms...");
+        debugMsgInrX("Buffer " + String(buff->getFillLevel()) + "/" + String(bufferSize));
       }
       if (!mp3->loop()) mp3->stop();
     } else {
-      debugMsgInr("MP3 done\n");
+      debugMsgInr("MP3 done");
       playflag = 0; 
     }
-    if (digitalRead(BTNA) ==  LOW) {
+    if (digitalRead(BTNCONF) ==  LOW) {
       StopPlaying();
       display.clearDisplay();
       display.drawBitmap(0,0,startScreen,128,64,1);
@@ -302,13 +296,13 @@ void loop() {
       playflag = 0;
       delay(200);
     }
-    if (digitalRead(BTNB) ==  LOW) {
-      fgain = fgain + 1.0;
-      if (fgain > 10.0) {
-        fgain = 1.0;
+    if (digitalRead(BTNBACK) ==  LOW) {
+      fgain = fgain + VOLUME_STEP_SIZE;
+      if (fgain > MAX_GAIN) {
+        fgain = VOLUME_STEP_SIZE;
       }
-      out->SetGain(fgain*0.05);
-      debugMsgInr("STATUS(Gain) " + String(fgain*0.05));
+      out->SetGain(fgain);
+      debugMsgInr("STATUS(Gain) " + String(fgain));
       delay(200);
     }
   }
@@ -325,17 +319,18 @@ void StartPlaying() {
     debugMsgInrX(frame);
     delay(FRAME_DELAY);
   }
-  file = new AudioFileSourceICYStream(URL);
+  file = new AudioFileSourceICYStream(URL.c_str());
   file->RegisterMetadataCB(MDCallback, (void*)"ICY");
   buff = new AudioFileSourceBuffer(file, bufferSize);
   buff->RegisterStatusCB(StatusCallback, (void*)"buffer");
   out = new AudioOutputI2S(); //
   out->SetPinout(33, 14, 25); // (int bclk, int lrc, int dout)
   out->SetOutputModeMono(true);
-  out->SetGain(fgain*0.05);
+  out->SetGain(fgain);
   mp3 = new AudioGeneratorMP3();
   mp3->RegisterStatusCB(StatusCallback, (void*)"mp3");
   mp3->begin(buff, out);
+
   debugMsgInr("STATUS(URL) " + String(URL));
 }
 
