@@ -28,6 +28,8 @@ portMUX_TYPE encoderMux = portMUX_INITIALIZER_UNLOCKED;
 
 float n=0;
 int frame;
+int volume = 10;
+unsigned long lastEncoderMillis = 0;
 
 // ************************************************************
 // General values
@@ -55,8 +57,8 @@ AsyncWebServer server(80);
 
 String lastWiFiScan = "";
 
-unsigned long btn1ReadMillis = 0;
-unsigned long btn2ReadMillis = 0;
+unsigned long confBtnReadMillis = 0;
+unsigned long backBtnReadMillis = 0;
 
 // ------------------ Global functions -----------------
 

@@ -10,7 +10,12 @@
 #include <AudioOutputI2S.h>
 
 #include "Defs.h"
+#include "DebugManager.h"
 
+const int bufferSize = 16 * 1024; // buffer in byte, reduced from 16kb to 8kb to save RAM
+
+static void StatusCallback(void *cbData, int code, const char *string);
+static void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string);
 
 class RadioOutputManager_ {
     private:
@@ -24,15 +29,49 @@ class RadioOutputManager_ {
 
     public:
       void initializeAudioOutput();
-      void startRadioStream(const char* url, float gain);
+      void startRadioStream(String url, String stationName, float gain);
       void stopRadioStream();
+      void StartPlaying();
+      void StopPlaying();
+      void audioOncePerSecond();
+      void audioOncePerHour();
+      void audioOncePerLoop();
+      bool isPlaying() { return playing; }
+      bool isMuted() { return (_fgain == 0.0f); }
+      bool togglePlay() {
+        if (playing) {
+          StopPlaying();
+          return false;
+        } else {
+          StartPlaying();
+          return true;
+        }
+      }
+
+      // Volume control (0-100)
+      void setVolume(int vol);
+
+      // Audio mode management
+      void setAudioMode(AudioMode mode);
+      AudioMode getAudioMode();
+      bool isRadioMode();
+      bool isBluetoothMode();
 
     private:
       AudioFileSourceICYStream *file = nullptr;
       AudioFileSourceBuffer *buff = nullptr;
       AudioGeneratorMP3 *mp3 = nullptr;
       AudioOutputI2S *out = nullptr;
-      
+
+      float _fgain = DEFAULT_GAIN;
+      String _url = "";
+      String _stationName = "";
+      volatile bool playing = false;
+      volatile bool audioTaskRunning = false;
+      TaskHandle_t audioTaskHandle = nullptr;
+      AudioMode currentAudioMode = AUDIO_MODE_RADIO;
+
+      static void audioTask(void *param);
   };
   
   // free function link to the class function

@@ -14,6 +14,7 @@ typedef void (*DebugCallback) (String);
 #define CMG_EXTENDED_DEBUG_OFF
 #define UTL_EXTENDED_DEBUG_OFF
 #define MNM_EXTENDED_DEBUG_OFF
+#define AUD_EXTENDED_DEBUG
 
 // Basic debug settings
 #ifdef DEBUG
@@ -26,6 +27,7 @@ typedef void (*DebugCallback) (String);
 #define debugMsgCdm(message) debugManager.debugMsg("[CDM]", message);
 #define debugMsgCmg(message) debugManager.debugMsg("[GMC]", message);
 #define debugMsgMnm(message) debugManager.debugMsg("[MNM]", message);
+#define debugMsgAud(message) debugManager.debugMsg("[AUD]", message);
 #else
 #define debugMsgMain(message)
 #define debugMsgOtm(message)
@@ -36,6 +38,7 @@ typedef void (*DebugCallback) (String);
 #define debugMsgCdm(message)
 #define debugMsgCmg(message)
 #define debugMsgMnm(message)
+#define debugMsgAud(message)
 #endif
 
 // Extended debug settings
@@ -57,6 +60,11 @@ typedef void (*DebugCallback) (String);
 #define debugMsgMnmX(message)
 #endif
 
+#ifdef AUD_EXTENDED_DEBUG
+#define debugMsgAudX(message) debugManager.debugMsg("[AUD]", message);
+#else
+#define debugMsgAudX(message)
+#endif
 
 class DebugManager_ {
   private:

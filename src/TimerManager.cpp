@@ -35,6 +35,8 @@ void IRAM_ATTR onTimer0() {
 // Start the timers
 // ************************************************************
 void startTimers() {
+  pinMode(LED_PIN, OUTPUT);
+
   // LED flash timer
   timer0 = timerBegin(0, 80, true);
   timerAttachInterrupt(timer0, &onTimer0, true);
@@ -62,6 +64,16 @@ void setLedFlashType(byte flashType) {
     case 1: {
       count0Max = 100;
       count0Off = 50;
+      break;
+    }
+    case 2: {
+      count0Max = 50;
+      count0Off = 25;
+      break;
+    }
+    default: {
+      count0Max = 200;
+      count0Off = 150;
       break;
     }
   }

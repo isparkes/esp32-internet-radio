@@ -39,6 +39,8 @@ extern portMUX_TYPE encoderMux;
   
 extern float n;
 extern int frame;
+extern int volume;
+extern unsigned long lastEncoderMillis;
 
 // ************************************************************
 // General values
@@ -53,8 +55,8 @@ extern AsyncWebServer server;
 
 extern String lastWiFiScan;
 
-extern unsigned long btn1ReadMillis;
-extern unsigned long btn2ReadMillis;
+extern unsigned long confBtnReadMillis;
+extern unsigned long backBtnReadMillis;
 
 extern bool lastExpired;
 

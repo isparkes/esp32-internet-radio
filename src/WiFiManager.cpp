@@ -13,12 +13,10 @@ void wpsInitConfig()
 }
 
 // ************************************************************
-// Conditionally send a message to the OLED
+// Conditionally send a message to debug output
 // ************************************************************
 void flashMenuEvent(String titleTest, String flashText) {
-    #ifdef FEATURE_MENU
-    menuManager.flashMenuMessage(titleTest, flashText);
-    #endif
+    debugMsgWfm(titleTest + ": " + flashText);
 }
 
 // ************************************************************

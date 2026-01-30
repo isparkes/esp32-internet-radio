@@ -1,11 +1,6 @@
 #include "WebManager.h"
 
-// This include has to be here, anbd not in the header file
-#include <ElegantOTA.h>
-
-// I had to fiddle in the ElegantOTA source to get this to work
-// Line 27: #define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
-// #define ELEGANTOTA_USE_ASYNC_WEBSERVER
+// OTA support removed to save memory
 
 // ************************************************************
 // Open up the normal page handlers
@@ -102,10 +97,11 @@ void WebManager_::beginPortal() {
 }
 
 // ************************************************************
-// Start the OTA service
+// Start the OTA service - REMOVED TO SAVE MEMORY
 // ************************************************************
 void WebManager_::startOTA() {
-  ElegantOTA.begin(&server, "admin", "update");
+  // OTA functionality removed to save flash and RAM
+  debugMsgWbm("OTA disabled - use USB to upload new firmware");
 }
 
 // ************************************************************
