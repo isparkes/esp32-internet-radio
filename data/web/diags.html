@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnostics - Internet Radio</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:16px;max-width:480px;margin:0 auto}
+h1{color:#0f3460;background:#e0e0e0;padding:12px;border-radius:8px;text-align:center;margin-bottom:16px;font-size:1.3em}
+.card{background:#16213e;border-radius:8px;padding:16px;margin-bottom:12px}
+.card h2{font-size:1em;color:#a0a0a0;margin-bottom:8px}
+a.btn{display:block;background:#0f3460;color:#fff;text-decoration:none;border-radius:6px;padding:14px;text-align:center;font-size:1.1em;margin-bottom:10px}
+a.btn:hover{background:#1a5276}
+table{width:100%;border-collapse:collapse}
+td{padding:6px 4px;border-bottom:1px solid #1a1a2e;font-size:0.85em}
+td:first-child{color:#a0a0a0;width:40%}
+td:last-child{color:#e0e0e0;word-break:break-all}
+.part-table td{font-size:0.75em;padding:3px 4px}
+.part-table th{font-size:0.75em;color:#a0a0a0;text-align:left;padding:3px 4px;border-bottom:1px solid #0f3460}
+.info{font-size:0.85em;color:#888}
+</style>
+</head>
+<body>
+<h1>Diagnostics</h1>
+<div class="card">
+<h2>System</h2>
+<table id="sys"><tr><td colspan="2" class="info">Loading...</td></tr></table>
+</div>
+<div class="card">
+<h2>Memory</h2>
+<table id="mem"><tr><td colspan="2" class="info">Loading...</td></tr></table>
+</div>
+<div class="card">
+<h2>Firmware</h2>
+<table id="fw"><tr><td colspan="2" class="info">Loading...</td></tr></table>
+</div>
+<div class="card">
+<h2>Partitions</h2>
+<div id="parts" class="info">Loading...</div>
+</div>
+<div class="card">
+<a class="btn" href="/">Back to Home</a>
+</div>
+<script>
+function fmt(b){if(b>1048576)return(b/1048576).toFixed(1)+' MB';if(b>1024)return(b/1024).toFixed(1)+' KB';return b+' B';}
+function row(l,v){return '<tr><td>'+l+'</td><td>'+v+'</td></tr>';}
+fetch('/api/getDiags').then(r=>r.json()).then(d=>{
+document.getElementById('sys').innerHTML=
+row('Uptime',d.uptime)+
+row('Runtime',d.runtime)+
+row('CPU Freq',d.cpufreq+' MHz')+
+row('SDK',d.sdkversion)+
+row('Reset Reason',d.resetreason)+
+row('Features',d.features||'None');
+document.getElementById('mem').innerHTML=
+row('Free Heap',fmt(d.heap))+
+row('Min Free Heap',fmt(d.minfreeheap))+
+row('Free PSRAM',fmt(d.minfreepsram));
+document.getElementById('fw').innerHTML=
+row('Compiled',d.compiledate)+
+row('Sketch Size',fmt(d.sketchsize))+
+row('Free Sketch',fmt(d.freesketch))+
+row('Flash Size',fmt(d.flashsize))+
+row('Sketch MD5',d.sketchmd5);
+// Parse partitions
+var ps=d.partitions||'';
+var lines=ps.split(';').filter(s=>s.length>0);
+if(lines.length>1){
+var h='<table class="part-table"><tr><th>Name</th><th>Type</th><th>Size</th></tr>';
+for(var i=1;i<lines.length;i++){
+var p=lines[i].split(',');
+if(p.length>=5){
+var sz=p[4].replace(/[()]/g,'');
+h+='<tr><td>'+p[0]+'</td><td>'+p[1]+'</td><td>'+fmt(parseInt(sz))+'</td></tr>';
+}
+}
+h+='</table>';
+document.getElementById('parts').innerHTML=h;
+}
+}).catch(()=>{
+document.getElementById('sys').innerHTML='<tr><td colspan="2" class="info">Could not load diagnostics</td></tr>';
+});
+</script>
+</body>
+</html>

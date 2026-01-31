@@ -37,6 +37,16 @@ void WebManager_::begin() {
     });
   server.on("/utils/restart", HTTP_GET, restartHandler);
 
+  // Radio web interface
+  server.on("/radio", HTTP_GET, radioPageHandler);
+  server.on("/api/stations/delete", HTTP_POST, deleteStationHandler);
+  server.on("/api/stations", HTTP_GET, getStationsHandler);
+  server.on("/api/stations", HTTP_POST, postStationHandler);
+  server.on("/api/status", HTTP_GET, getStatusHandler);
+  server.on("/api/play", HTTP_POST, postPlayHandler);
+  server.on("/api/stop", HTTP_POST, postStopHandler);
+  server.on("/api/volume", HTTP_POST, postVolumeHandler);
+
   server.onNotFound([](AsyncWebServerRequest *request){
       request->send(404, "text/plain", "The content you are looking for was not found.");
   });

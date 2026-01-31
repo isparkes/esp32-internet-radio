@@ -30,6 +30,8 @@ class SpiffsStorage_
     void saveConfigToSpiffs();
     bool getStatsFromSpiffs();
     void saveStatsToSpiffs();
+    bool getStationsFromSpiffs();
+    void saveStationsToSpiffs();
 
     JsonObject& getConfigAsJsonObject();
   private:

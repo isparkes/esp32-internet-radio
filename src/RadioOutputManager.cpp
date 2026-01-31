@@ -12,9 +12,14 @@
 void RadioOutputManager_::initializeAudioOutput() {
   debugManagerLink("RadioOutputManager: Initializing audio output");
 
-  // Set default station - audio objects created on demand in StartPlaying()
-  _url = "http://mp3.ffh.de/radioffh/hqlivestream.mp3";
-  _stationName = "Radio FFH";
+  // Set default station from stored station list
+  if (stationCount > 0) {
+    _url = stations[0].url;
+    _stationName = stations[0].name;
+  } else {
+    _url = "http://mp3.ffh.de/radioffh/hqlivestream.mp3";
+    _stationName = "Radio FFH";
+  }
   _fgain = (volume / 100.0f) * MAX_GAIN;
 }
 

@@ -56,6 +56,8 @@ class RadioOutputManager_ {
       AudioMode getAudioMode();
       bool isRadioMode();
       bool isBluetoothMode();
+      String getStationName() { return _stationName; }
+      String getUrl() { return _url; }
 
     private:
       AudioFileSourceICYStream *file = nullptr;

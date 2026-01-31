@@ -176,6 +176,86 @@ void SpiffsStorage_::saveStatsToSpiffs()
 
 
 // ************************************************************
+// Retrieve stations from SPIFFS
+// ************************************************************
+bool SpiffsStorage_::getStationsFromSpiffs()
+{
+  bool loaded = false;
+  if (SPIFFS.exists("/config/stations.json"))
+  {
+    debugMsgSpf("Reading stations file");
+    File file = SPIFFS.open("/config/stations.json", "r");
+    if (file)
+    {
+      size_t size = file.size();
+      std::unique_ptr<char[]> buf(new char[size]);
+      file.readBytes(buf.get(), size);
+      DynamicJsonBuffer jsonBuffer;
+      JsonArray &arr = jsonBuffer.parseArray(buf.get());
+      if (arr.success())
+      {
+        stationCount = 0;
+        for (int i = 0; i < (int)arr.size() && i < MAX_STATIONS; i++)
+        {
+          JsonObject &s = arr[i];
+          stations[i].name = s["name"].as<String>();
+          stations[i].url = s["url"].as<String>();
+          stationCount++;
+        }
+        debugMsgSpf("Loaded " + String(stationCount) + " stations");
+        loaded = true;
+      }
+      else
+      {
+        debugMsgSpf("Failed to parse stations json");
+      }
+      file.close();
+    }
+  }
+
+  // Seed a default station if none loaded
+  if (!loaded || stationCount == 0)
+  {
+    debugMsgSpf("No stations found - adding default");
+    stations[0].name = "Radio FFH";
+    stations[0].url = "http://mp3.ffh.de/radioffh/hqlivestream.mp3";
+    stationCount = 1;
+    saveStationsToSpiffs();
+    loaded = true;
+  }
+
+  return loaded;
+}
+
+// ************************************************************
+// Save stations to SPIFFS
+// ************************************************************
+void SpiffsStorage_::saveStationsToSpiffs()
+{
+  debugMsgSpf("Saving stations");
+  DynamicJsonBuffer jsonBuffer;
+  JsonArray &arr = jsonBuffer.createArray();
+
+  for (int i = 0; i < stationCount; i++)
+  {
+    JsonObject &s = arr.createNestedObject();
+    s["name"] = stations[i].name;
+    s["url"] = stations[i].url;
+  }
+
+  File file = SPIFFS.open("/config/stations.json", "w");
+  if (!file)
+  {
+    debugMsgSpf("Failed to open stations file for writing");
+    file.close();
+    return;
+  }
+  arr.printTo(file);
+  file.close();
+  debugMsgSpf("Saved " + String(stationCount) + " stations");
+}
+
+// ************************************************************
 // Internal plumbing
 // ************************************************************
 

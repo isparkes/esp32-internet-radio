@@ -17,10 +17,29 @@ static char wifiPasswordBuffer[64];
 // ************************************************************
 // Audio menu callbacks
 // ************************************************************
-void setStation() {
-  radioOutputManager.startRadioStream("http://mp3.ffh.de/radioffh/hqlivestream.mp3", "FFH", 1.0f);
+// Station selection callbacks (one per MAX_STATIONS slot)
+static void playStation(int idx) {
+  if (idx >= 0 && idx < stationCount) {
+    float gain = (volume / 100.0f) * MAX_GAIN;
+    radioOutputManager.startRadioStream(stations[idx].url, stations[idx].name, gain);
+  }
   buildAudioMenuDynamic();
 }
+static void playStation0() { playStation(0); }
+static void playStation1() { playStation(1); }
+static void playStation2() { playStation(2); }
+static void playStation3() { playStation(3); }
+static void playStation4() { playStation(4); }
+static void playStation5() { playStation(5); }
+static void playStation6() { playStation(6); }
+static void playStation7() { playStation(7); }
+static void playStation8() { playStation(8); }
+
+typedef void (*StationCallback)();
+static StationCallback stationCallbacks[] = {
+  playStation0, playStation1, playStation2, playStation3, playStation4,
+  playStation5, playStation6, playStation7, playStation8
+};
 
 void startPlaying() {
   radioOutputManager.StartPlaying();
@@ -125,8 +144,10 @@ void buildAudioMenuDynamic() {
 
   if (radioOutputManager.isRadioMode()) {
     menuSystem.addInfo(audioMenu, "Mode: Radio");
-    menuSystem.addAction(audioMenu, "Set Station", setStation);
-    menuSystem.addAction(audioMenu, "Start", startPlaying);
+    // Add station list
+    for (int i = 0; i < stationCount && i < MAX_STATIONS; i++) {
+      menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
+    }
     menuSystem.addAction(audioMenu, "Stop", stopPlaying);
     menuSystem.addAction(audioMenu, "Switch to BT", switchToBluetoothMode);
   } else {
@@ -205,8 +226,9 @@ void buildRadioMenus() {
   audioMenu = menuSystem.createMenu("Audio");
   if (radioOutputManager.isRadioMode()) {
     menuSystem.addInfo(audioMenu, "Mode: Radio");
-    menuSystem.addAction(audioMenu, "Set Station", setStation);
-    menuSystem.addAction(audioMenu, "Start", startPlaying);
+    for (int i = 0; i < stationCount && i < MAX_STATIONS; i++) {
+      menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
+    }
     menuSystem.addAction(audioMenu, "Stop", stopPlaying);
     menuSystem.addAction(audioMenu, "Switch to BT", switchToBluetoothMode);
   } else {

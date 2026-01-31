@@ -77,6 +77,10 @@ void setup() {
     spiffsStorage.saveConfigToSpiffs();
   }
 
+  // Load station list
+  spiffsStorage.getStationsFromSpiffs();
+  debugMsgInr("Loaded " + String(stationCount) + " stations");
+
   // -------------------------------------------------------------------------
 
   debugMsgInr("Start up Timers");

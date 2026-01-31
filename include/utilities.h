@@ -74,3 +74,13 @@ void disableWatchdog();
 void feedWatchdog();
 
 void playTune();
+
+// Radio web interface handlers
+void radioPageHandler(AsyncWebServerRequest *request);
+void getStationsHandler(AsyncWebServerRequest *request);
+void postStationHandler(AsyncWebServerRequest *request);
+void deleteStationHandler(AsyncWebServerRequest *request);
+void getStatusHandler(AsyncWebServerRequest *request);
+void postPlayHandler(AsyncWebServerRequest *request);
+void postStopHandler(AsyncWebServerRequest *request);
+void postVolumeHandler(AsyncWebServerRequest *request);

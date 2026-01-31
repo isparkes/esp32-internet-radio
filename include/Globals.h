@@ -60,6 +60,12 @@ extern unsigned long backBtnReadMillis;
 
 extern bool lastExpired;
 
+// ************************************************************
+// Station list
+// ************************************************************
+extern station_t stations[];
+extern int stationCount;
+
 // ------------------ Global functions -----------------
 
 void updateNowMillis();
