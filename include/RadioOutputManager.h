@@ -12,7 +12,7 @@
 #include "Defs.h"
 #include "DebugManager.h"
 
-const int bufferSize = 16 * 1024; // buffer in byte, reduced from 16kb to 8kb to save RAM
+const int bufferSize = 256 * 1024; // 64KB buffer in PSRAM (was 16KB in SRAM)
 
 static void StatusCallback(void *cbData, int code, const char *string);
 static void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string);
@@ -56,6 +56,7 @@ class RadioOutputManager_ {
       AudioMode getAudioMode();
       bool isRadioMode();
       bool isBluetoothMode();
+      bool isRadioBtMode();
       String getStationName() { return _stationName; }
       String getUrl() { return _url; }
 
@@ -63,7 +64,8 @@ class RadioOutputManager_ {
       AudioFileSourceICYStream *file = nullptr;
       AudioFileSourceBuffer *buff = nullptr;
       AudioGeneratorMP3 *mp3 = nullptr;
-      AudioOutputI2S *out = nullptr;
+      AudioOutput *out = nullptr;
+      uint8_t *audioBuffer = nullptr;  // PSRAM-allocated streaming buffer
 
       float _fgain = DEFAULT_GAIN;
       String _url = "";
@@ -71,7 +73,11 @@ class RadioOutputManager_ {
       volatile bool playing = false;
       volatile bool audioTaskRunning = false;
       TaskHandle_t audioTaskHandle = nullptr;
+      StackType_t* audioTaskStack = nullptr;    // PSRAM-allocated task stack
+      StaticTask_t* audioTaskTCB = nullptr;     // Task control block (DRAM)
+      bool audioInlineMode = false;             // true when running decoder in main loop (no task)
       AudioMode currentAudioMode = AUDIO_MODE_RADIO;
+      bool btPlayPending = false;  // true while waiting for BT source to connect
 
       static void audioTask(void *param);
   };

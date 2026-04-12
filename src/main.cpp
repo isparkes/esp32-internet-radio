@@ -51,7 +51,16 @@ void setup() {
   nowMillis = millis();
 
   // -------------------------------------------------------------------------
-  
+
+  // Check for PSRAM
+  if (psramFound()) {
+    debugMsgInr("PSRAM found: " + String(ESP.getPsramSize() / 1024) + " KB total, " + String(ESP.getFreePsram() / 1024) + " KB free");
+  } else {
+    debugMsgInr("WARNING: No PSRAM detected");
+  }
+
+  // -------------------------------------------------------------------------
+
   debugMsgInr("Start up SPIFFS");
 
   // Initialize SPIFFS
@@ -137,13 +146,19 @@ void setup() {
 
   debugMsgInr("Initialising Audio");
 
+  // The audio task runs on core 1. mp3->loop() can block on network I/O,
+  // which would starve the core 1 idle task and trigger its WDT.
+  // Core 0 is left entirely to the BT stack and WiFi.
+  disableCore1WDT();
+
   radioOutputManager.initializeAudioOutput();
 
   // -------------------------------------------------------------------------
 
+#ifdef FEATURE_BLUETOOTH
   debugMsgInr("Initialising Bluetooth");
-
   bluetoothManager.initializeBluetooth();
+#endif
 
   // -------------------------------------------------------------------------
 

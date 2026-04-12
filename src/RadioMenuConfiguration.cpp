@@ -51,8 +51,14 @@ void stopPlaying() {
   buildAudioMenuDynamic();
 }
 
+#ifdef FEATURE_BLUETOOTH
 void switchToBluetoothMode() {
   radioOutputManager.setAudioMode(AUDIO_MODE_BLUETOOTH);
+  buildAudioMenuDynamic();
+}
+
+void switchToRadioBtMode() {
+  radioOutputManager.setAudioMode(AUDIO_MODE_RADIO_BLUETOOTH);
   buildAudioMenuDynamic();
 }
 
@@ -60,6 +66,7 @@ void switchToRadioMode() {
   radioOutputManager.setAudioMode(AUDIO_MODE_RADIO);
   buildAudioMenuDynamic();
 }
+#endif
 
 // ************************************************************
 // WiFi menu callbacks
@@ -144,14 +151,29 @@ void buildAudioMenuDynamic() {
 
   if (radioOutputManager.isRadioMode()) {
     menuSystem.addInfo(audioMenu, "Mode: Radio");
-    // Add station list
     for (int i = 0; i < stationCount && i < MAX_STATIONS; i++) {
       menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
     }
     menuSystem.addAction(audioMenu, "Stop", stopPlaying);
-    menuSystem.addAction(audioMenu, "Switch to BT", switchToBluetoothMode);
+#ifdef FEATURE_BLUETOOTH
+    menuSystem.addAction(audioMenu, "Switch to BT Sink", switchToBluetoothMode);
+    menuSystem.addAction(audioMenu, "Radio to BT Spkr", switchToRadioBtMode);
+#endif
+  }
+#ifdef FEATURE_BLUETOOTH
+  else if (radioOutputManager.isRadioBtMode()) {
+    menuSystem.addInfo(audioMenu, "Mode: Radio->BT");
+    if (radioOutputManager.isPlaying()) {
+      menuSystem.addInfo(audioMenu, "Status: Streaming");
+    } else {
+      menuSystem.addInfo(audioMenu, "Status: Connecting");
+    }
+    for (int i = 0; i < stationCount && i < MAX_STATIONS; i++) {
+      menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
+    }
+    menuSystem.addAction(audioMenu, "Switch to Radio", switchToRadioMode);
   } else {
-    menuSystem.addInfo(audioMenu, "Mode: Bluetooth");
+    menuSystem.addInfo(audioMenu, "Mode: BT Sink");
     if (bluetoothManager.isBluetoothConnected()) {
       menuSystem.addInfo(audioMenu, "Status: Connected");
     } else {
@@ -159,6 +181,7 @@ void buildAudioMenuDynamic() {
     }
     menuSystem.addAction(audioMenu, "Switch to Radio", switchToRadioMode);
   }
+#endif
 
   menuSystem.navigateToMenu(audioMenu);
 }
@@ -230,11 +253,13 @@ void buildRadioMenus() {
       menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
     }
     menuSystem.addAction(audioMenu, "Stop", stopPlaying);
+#ifdef FEATURE_BLUETOOTH
     menuSystem.addAction(audioMenu, "Switch to BT", switchToBluetoothMode);
   } else {
     menuSystem.addInfo(audioMenu, "Mode: Bluetooth");
     menuSystem.addInfo(audioMenu, "Status: Waiting...");
     menuSystem.addAction(audioMenu, "Switch to Radio", switchToRadioMode);
+#endif
   }
 
   wifiMenu = menuSystem.createMenu("WiFi");
@@ -296,10 +321,22 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
   if (radioOutputManager.isRadioMode()) {
     display->print("Radio: ");
     display->print(radioOutputManager.isPlaying() ? "Playing" : "Stopped");
+  }
+#ifdef FEATURE_BLUETOOTH
+  else if (radioOutputManager.isRadioBtMode()) {
+    display->print("Radio>BT: ");
+    if (radioOutputManager.isPlaying()) {
+      display->print("Streaming");
+    } else if (bluetoothManager.isBluetoothSourceConnected()) {
+      display->print("BT ready");
+    } else {
+      display->print("Connecting...");
+    }
   } else {
     display->print("BT: ");
     display->print(bluetoothManager.isBluetoothConnected() ? "Connected" : "Waiting...");
   }
+#endif
   yPos += 10;
 
   // WiFi status

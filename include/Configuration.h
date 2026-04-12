@@ -22,6 +22,11 @@
 
 #define FEATURE_MENU
 
+// Classic Bluetooth A2DP - only available on original ESP32 (not S3/C3)
+#if defined(CONFIG_IDF_TARGET_ESP32)
+#define FEATURE_BLUETOOTH
+#endif
+
 // -------------------------------------------------------------------------------
 
 #define CLOCK_MENU_TITLE "INet Radio"

@@ -1143,7 +1143,12 @@ void MenuSystem::renderFlashMessage()
 // Show a temporary flash message overlay
 void MenuSystem::showFlashMessage(const char *message, unsigned long durationMs)
 {
-  flashPreviousMode = currentMode;
+  // Only update flashPreviousMode when not already in flash mode, otherwise
+  // a second flash message would store MODE_FLASH_MESSAGE as the return target
+  // and the display would be stuck in flash mode forever.
+  if (currentMode != MODE_FLASH_MESSAGE) {
+    flashPreviousMode = currentMode;
+  }
   strncpy(flashMessage, message, sizeof(flashMessage) - 1);
   flashMessage[sizeof(flashMessage) - 1] = '\0';
   flashMessageStart = millis();

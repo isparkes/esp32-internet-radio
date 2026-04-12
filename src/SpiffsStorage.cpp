@@ -1,4 +1,5 @@
 #include "SpiffsStorage.h"
+#include <esp32-hal-psram.h>
 
 //**********************************************************************************
 //**********************************************************************************
@@ -34,8 +35,10 @@ bool SpiffsStorage_::getConfigFromSpiffs()
     {
       debugMsgSpfX("opened config file");
       size_t size = configFile.size();
-      // Allocate a buffer to store contents of the file.
-      std::unique_ptr<char[]> buf(new char[size]);
+      // Allocate a buffer from PSRAM if available
+      char *rawBuf = psramFound() ? (char *)ps_malloc(size) : nullptr;
+      if (!rawBuf) rawBuf = (char *)malloc(size);
+      std::unique_ptr<char[], decltype(&free)> buf(rawBuf, free);
       configFile.readBytes(buf.get(), size);
       DynamicJsonBuffer jsonBuffer;
       JsonObject &json = jsonBuffer.parseObject(buf.get());
@@ -126,8 +129,10 @@ bool SpiffsStorage_::getStatsFromSpiffs()
       debugMsgSpfX("opened stats file");
 
       size_t size = statsFile.size();
-      // Allocate a buffer to store contents of the file.
-      std::unique_ptr<char[]> buf(new char[size]);
+      // Allocate a buffer from PSRAM if available
+      char *rawBuf = psramFound() ? (char *)ps_malloc(size) : nullptr;
+      if (!rawBuf) rawBuf = (char *)malloc(size);
+      std::unique_ptr<char[], decltype(&free)> buf(rawBuf, free);
       statsFile.readBytes(buf.get(), size);
       DynamicJsonBuffer jsonBuffer;
       JsonObject &json = jsonBuffer.parseObject(buf.get());
@@ -188,7 +193,10 @@ bool SpiffsStorage_::getStationsFromSpiffs()
     if (file)
     {
       size_t size = file.size();
-      std::unique_ptr<char[]> buf(new char[size]);
+      // Allocate a buffer from PSRAM if available
+      char *rawBuf = psramFound() ? (char *)ps_malloc(size) : nullptr;
+      if (!rawBuf) rawBuf = (char *)malloc(size);
+      std::unique_ptr<char[], decltype(&free)> buf(rawBuf, free);
       file.readBytes(buf.get(), size);
       DynamicJsonBuffer jsonBuffer;
       JsonArray &arr = jsonBuffer.parseArray(buf.get());

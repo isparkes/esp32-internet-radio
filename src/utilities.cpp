@@ -333,6 +333,8 @@ void getDiagsDataHandler(AsyncWebServerRequest *request) {
   // Time since last reboot
   root["runtime"] = secsToReadableString(nowMillis/1000);
   root["cyclecount"] = ESP.getCycleCount();
+  root["psramsize"] = ESP.getPsramSize();
+  root["freepsram"] = ESP.getFreePsram();
   root["minfreepsram"] = ESP.getMinFreePsram();
   root["minfreeheap"] = ESP.getMinFreeHeap();
   root["resetreason"] = String(rtc_get_reset_reason(0)) + "/" + String(rtc_get_reset_reason(1));
