@@ -15,9 +15,9 @@ An ESP32-based internet radio with optional Bluetooth audio, OLED menu system, a
 
 | Function | GPIO |
 |----------|------|
-| I2S BCLK | 33 |
-| I2S LRC | 23 |
-| I2S DOUT | 25 |
+| I2S BCLK/BCK | 33 |
+| I2S LRC/LCK | 23 |
+| I2S DOUT/DIN | 25 |
 | I2C SDA | 21 |
 | I2C SCL | 22 |
 | Encoder CLK | 5 |

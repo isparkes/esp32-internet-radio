@@ -56,9 +56,6 @@ String secsToReadableString (long secsValue) {
 // Reset settings to factory defaults
 // ************************************************************
 void resetOptions() {
-  cc->webAuthentication = false;
-  cc->webUsername = "";
-  cc->webPassword = "";
   cc->WifiOnAtStart = true;
   cc->WiFiSSID = "";
   cc->WiFiPassword = "";
@@ -319,7 +316,7 @@ void getDiagsDataHandler(AsyncWebServerRequest *request) {
   root["uptime"] = secsToReadableString(cs->uptimeMins * 60);
 
   // Total time the tubes have been on for
-  root["ontime"] = secsToReadableString(cs->tubeOnTimeMins * 60);
+  root["ontime"] = secsToReadableString(cs->playtimeMins * 60);
 
   root["heap"] = ESP.getFreeHeap();
   root["freesketch"] = ESP.getFreeSketchSpace();

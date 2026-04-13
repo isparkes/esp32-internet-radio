@@ -1,6 +1,6 @@
 #include "WebManager.h"
-
-// OTA support removed to save memory
+#include <ArduinoOTA.h>
+#include <Update.h>
 
 // ************************************************************
 // Open up the normal page handlers
@@ -36,6 +36,73 @@ void WebManager_::begin() {
         request->redirect("/utility.html");;
     });
   server.on("/utils/restart", HTTP_GET, restartHandler);
+
+  // OTA web update
+  server.on("/update", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/web/update.html", "text/html");
+  });
+  server.on("/update", HTTP_POST,
+    [](AsyncWebServerRequest *request) {
+      bool ok = !Update.hasError();
+      AsyncWebServerResponse *resp = request->beginResponse(200, "text/plain", ok ? "OK" : "FAIL");
+      resp->addHeader("Connection", "close");
+      request->send(resp);
+      if (ok) {
+        delay(100);
+        ESP.restart();
+      }
+    },
+    [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+      if (!index) {
+        debugMsgWbm("OTA upload start: " + filename);
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+          debugMsgWbm("OTA begin failed");
+        }
+      }
+      if (Update.write(data, len) != len) {
+        debugMsgWbm("OTA write error");
+      }
+      if (final) {
+        if (Update.end(true)) {
+          debugMsgWbm("OTA upload complete: " + String(index + len) + " bytes");
+        } else {
+          debugMsgWbm("OTA end failed");
+        }
+      }
+    }
+  );
+
+  // OTA filesystem update
+  server.on("/updatefs", HTTP_POST,
+    [](AsyncWebServerRequest *request) {
+      bool ok = !Update.hasError();
+      AsyncWebServerResponse *resp = request->beginResponse(200, "text/plain", ok ? "OK" : "FAIL");
+      resp->addHeader("Connection", "close");
+      request->send(resp);
+      if (ok) {
+        delay(100);
+        ESP.restart();
+      }
+    },
+    [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+      if (!index) {
+        debugMsgWbm("OTA FS upload start: " + filename);
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_SPIFFS)) {
+          debugMsgWbm("OTA FS begin failed");
+        }
+      }
+      if (Update.write(data, len) != len) {
+        debugMsgWbm("OTA FS write error");
+      }
+      if (final) {
+        if (Update.end(true)) {
+          debugMsgWbm("OTA FS upload complete: " + String(index + len) + " bytes");
+        } else {
+          debugMsgWbm("OTA FS end failed");
+        }
+      }
+    }
+  );
 
   // Radio web interface
   server.on("/radio", HTTP_GET, radioPageHandler);
@@ -107,11 +174,33 @@ void WebManager_::beginPortal() {
 }
 
 // ************************************************************
-// Start the OTA service - REMOVED TO SAVE MEMORY
+// Start the OTA service
 // ************************************************************
 void WebManager_::startOTA() {
-  // OTA functionality removed to save flash and RAM
-  debugMsgWbm("OTA disabled - use USB to upload new firmware");
+  ArduinoOTA.setHostname(uniqHostname.c_str());
+
+  ArduinoOTA.onStart([]() {
+    debugMsgWbm("OTA update starting");
+  });
+  ArduinoOTA.onEnd([]() {
+    debugMsgWbm("OTA update complete");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    debugMsgWbm("OTA progress: " + String(progress * 100 / total) + "%");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    debugMsgWbm("OTA error: " + String(error));
+  });
+
+  ArduinoOTA.begin();
+  debugMsgWbm("OTA ready on " + uniqHostname);
+}
+
+// ************************************************************
+// Service OTA requests - call from main loop
+// ************************************************************
+void WebManager_::handleOTA() {
+  ArduinoOTA.handle();
 }
 
 // ************************************************************

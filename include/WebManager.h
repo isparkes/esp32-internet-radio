@@ -23,6 +23,7 @@ class WebManager_ {
     void begin();
     void beginPortal();
     void startOTA();
+    void handleOTA();
   private:
 };
 

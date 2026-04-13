@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OTA Update</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#e0e0e0;padding:16px;max-width:480px;margin:0 auto}
+h1{color:#0f3460;background:#e0e0e0;padding:12px;border-radius:8px;text-align:center;margin-bottom:16px;font-size:1.3em}
+.card{background:#16213e;border-radius:8px;padding:16px;margin-bottom:12px}
+.card h2{font-size:1em;color:#a0a0a0;margin-bottom:12px}
+input[type=file]{display:block;width:100%;color:#e0e0e0;margin-bottom:14px}
+button{display:block;width:100%;background:#0f3460;color:#fff;border:none;border-radius:6px;padding:14px;font-size:1.1em;cursor:pointer}
+button:hover{background:#1a5276}
+button:disabled{background:#444;cursor:default}
+.status{margin-top:12px;font-size:0.9em;min-height:1.4em;text-align:center}
+.ok{color:#4caf50}.err{color:#f44336}
+progress{display:none;width:100%;margin-top:10px;height:8px;border-radius:4px}
+a{color:#a0a0e0}
+.hint{font-size:0.85em;color:#888}
+</style>
+</head>
+<body>
+<h1>OTA Update</h1>
+
+<div class="card">
+  <h2>Firmware (.bin)</h2>
+  <form id="fw-form">
+    <input type="file" id="fw-file" accept=".bin" required>
+    <progress id="fw-prog" max="100"></progress>
+    <button type="submit" id="fw-btn">Upload &amp; Flash Firmware</button>
+    <div id="fw-status" class="status"></div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Filesystem (.bin)</h2>
+  <form id="fs-form">
+    <input type="file" id="fs-file" accept=".bin" required>
+    <progress id="fs-prog" max="100"></progress>
+    <button type="submit" id="fs-btn">Upload &amp; Flash Filesystem</button>
+    <div id="fs-status" class="status"></div>
+  </form>
+</div>
+
+<div class="card hint">
+  <p>Firmware: <code>.pio/build/internet-radio/firmware.bin</code><br>
+  Filesystem: <code>.pio/build/internet-radio/spiffs.bin</code><br><br>
+  The device reboots automatically after a successful flash.</p>
+</div>
+
+<p style="margin-top:12px;text-align:center"><a href="/">&larr; Back</a></p>
+
+<script>
+function setupUpload(formId, fileId, btnId, progId, statusId, endpoint) {
+  const form=document.getElementById(formId), btn=document.getElementById(btnId),
+        prog=document.getElementById(progId), status=document.getElementById(statusId);
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const file=document.getElementById(fileId).files[0];
+    if (!file) return;
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST', endpoint);
+    xhr.upload.onprogress=function(ev) {
+      if (ev.lengthComputable) {
+        const pct=Math.round(ev.loaded/ev.total*100);
+        prog.style.display='block'; prog.value=pct;
+        status.textContent='Uploading... '+pct+'%'; status.className='status';
+      }
+    };
+    xhr.onload=function() {
+      if (xhr.status===200) {
+        status.textContent='Flash complete — rebooting…'; status.className='status ok';
+      } else {
+        status.textContent='Error: '+xhr.responseText; status.className='status err';
+        btn.disabled=false;
+      }
+    };
+    xhr.onerror=function() {
+      status.textContent='Upload failed.'; status.className='status err';
+      btn.disabled=false;
+    };
+    btn.disabled=true;
+    status.textContent='Starting upload…';
+    const fd=new FormData(); fd.append('file', file);
+    xhr.send(fd);
+  });
+}
+
+setupUpload('fw-form','fw-file','fw-btn','fw-prog','fw-status','/update');
+setupUpload('fs-form','fs-file','fs-btn','fs-prog','fs-status','/updatefs');
+</script>
+</body>
+</html>

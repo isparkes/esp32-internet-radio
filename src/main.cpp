@@ -10,31 +10,6 @@
 #include "BluetoothManager.h"
 #include "RadioMenuConfiguration.h"
 
-// String arrayURL[MAX_STATIONS] = {
-//   "http://mp3.ffh.de/radioffh/hqlivestream.mp3",
-//   "http://stream.laut.fm/numanme",
-//   "http://stream.governamerica.com:4030/index.html/128k.mp3%3Ftype=http&nocache=46079",
-//   "http://kvbstreams.dyndns.org:8000/wkvi-am",
-//   "http://hoth.alonhosting.com:1100/stream/1/",
-//   "http://radio.punjabrocks.com:9998/stream/1/",
-//   "http://server.mixify.in:8000/stream/1/",
-//   "http://142.4.219.8:8255/stream/1/",
-//   "http://mehefil.no-ip.com/stream/1/",
-// };
-
-// String arrayStation[MAX_STATIONS] = {
-//   "Radio FFH",
-//   "Numanme Radio",
-//   "Govern America",
-//   "WKVI Radio",
-//   "BollyHits Radio",
-//   "Taal Radio",
-//   "Mixify",
-//   "Bollywood Gold",
-//   "Mehefil Radio"
-// };
-
-
 // ************************************************************
 // Set up the unit
 // ************************************************************
@@ -203,46 +178,6 @@ void loop() {
       triggeredThisSec = false;
     }
   }
-
-  // if (playflag == 0) {
-  //   if (digitalRead(BTN_CONFIRM) ==  LOW) {
-  //     StartPlaying();
-  //     playflag = 1;
-  //   }
-
-  //   if (digitalRead(BTN_BACK) ==  LOW) {
-  //     sflag = (sflag + 1) % MAX_STATIONS;
-  //     URL = arrayURL[sflag];
-  //     station = arrayStation[sflag];  
-  //     debugMsgInr(station);
-  //     display.clearDisplay();
-  //     display.setTextSize(1);      // Normal 1:1 pixel scale
-  //     display.setTextColor(1); // Draw white text
-  //     display.setCursor(0, 20);
-  //     display.println(station);
-  //     display.display();             
-  //     delay(300);
-  //   }
-  // }
-
-  //   if (digitalRead(BTN_CONFIRM) ==  LOW) {
-  //     StopPlaying();
-  //     display.clearDisplay();
-  //     display.drawBitmap(0,0,startScreen,128,64,1);
-  //     display.display();
-  //     playflag = 0;
-  //     delay(200);
-  //   }
-  //   if (digitalRead(BTN_BACK) ==  LOW) {
-  //     fgain = fgain + VOLUME_STEP_SIZE;
-  //     if (fgain > MAX_GAIN) {
-  //       fgain = VOLUME_STEP_SIZE;
-  //     }
-  //     out->SetGain(fgain);
-  //     debugMsgInr("STATUS(Gain) " + String(fgain));
-  //     delay(200);
-  //   }
-  // }
 }
 
 
@@ -256,6 +191,15 @@ void performOncePerLoopProcessing() {
   // -------------------------------------------------------------------------------
   // Audio loop must run as frequently as possible to avoid choppy playback
   radioOutputManager.audioOncePerLoop();
+
+  // -------------------------------------------------------------------------------
+
+  // OTA polling - every 500ms is more than responsive enough
+  static unsigned long lastOTACheck = 0;
+  if (nowMillis - lastOTACheck >= 500) {
+    lastOTACheck = nowMillis;
+    webManager.handleOTA();
+  }
 
   // -------------------------------------------------------------------------------
 

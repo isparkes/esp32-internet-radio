@@ -51,15 +51,6 @@ bool SpiffsStorage_::getConfigFromSpiffs()
       {
         debugMsgSpfX("parsed config json");
 
-        cc->webAuthentication = json["webAuthentication"].as<bool>();
-        debugMsgSpfX("Loaded webAuthentication: " + String(cc->webAuthentication));
-
-        cc->webUsername = json["webUsername"].as<String>();
-        debugMsgSpfX("Loaded webUsername: " + cc->webUsername);
-
-        cc->webPassword = json["webPassword"].as<String>();
-        debugMsgSpfX("Loaded webPassword: " + cc->webPassword);
-
         cc->WiFiSSID = json["WiFiSSID"].as<String>();
         debugMsgSpfX("Loaded WiFiSSID: " + String(cc->WiFiSSID));
 
@@ -92,9 +83,6 @@ void SpiffsStorage_::saveConfigToSpiffs()
 
   DynamicJsonBuffer jsonBuffer;
   JsonObject &json = jsonBuffer.createObject();
-  json["webAuthentication"] = cc->webAuthentication;
-  json["webUsername"] = cc->webUsername;
-  json["webPassword"] = cc->webPassword;
   json["WiFiSSID"] = cc->WiFiSSID;
   json["WiFiPassword"] = cc->WiFiPassword;
   json["WifiOnAtStart"] = cc->WifiOnAtStart;
@@ -142,6 +130,9 @@ bool SpiffsStorage_::getStatsFromSpiffs()
 
         cs->uptimeMins = json.get<unsigned long>("uptime");
         debugMsgSpfX("Loaded uptime: " + String(cs->uptimeMins));
+
+        cs->playtimeMins = json.get<unsigned long>("playtime");
+        debugMsgSpfX("Loaded playtime: " + String(cs->playtimeMins));
 
         loaded = true;
       }
