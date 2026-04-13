@@ -69,6 +69,38 @@ void switchToRadioMode() {
 #endif
 
 // ************************************************************
+// WiFi scan network selection callbacks
+// ************************************************************
+#define MAX_SCAN_RESULTS 10
+
+static void selectScannedNetwork(int idx) {
+  String ssid = wifiManager.getLastScanResultSSID(idx);
+  strncpy(wifiSSIDBuffer, ssid.c_str(), sizeof(wifiSSIDBuffer) - 1);
+  wifiSSIDBuffer[sizeof(wifiSSIDBuffer) - 1] = '\0';
+  cc->WiFiSSID = ssid;
+  debugMsgMnm("Selected scanned network: " + ssid);
+  buildWifiMenuDynamic();
+}
+static void selectScannedNetwork0() { selectScannedNetwork(0); }
+static void selectScannedNetwork1() { selectScannedNetwork(1); }
+static void selectScannedNetwork2() { selectScannedNetwork(2); }
+static void selectScannedNetwork3() { selectScannedNetwork(3); }
+static void selectScannedNetwork4() { selectScannedNetwork(4); }
+static void selectScannedNetwork5() { selectScannedNetwork(5); }
+static void selectScannedNetwork6() { selectScannedNetwork(6); }
+static void selectScannedNetwork7() { selectScannedNetwork(7); }
+static void selectScannedNetwork8() { selectScannedNetwork(8); }
+static void selectScannedNetwork9() { selectScannedNetwork(9); }
+
+typedef void (*ScanCallback)();
+static ScanCallback scanCallbacks[] = {
+  selectScannedNetwork0, selectScannedNetwork1, selectScannedNetwork2,
+  selectScannedNetwork3, selectScannedNetwork4, selectScannedNetwork5,
+  selectScannedNetwork6, selectScannedNetwork7, selectScannedNetwork8,
+  selectScannedNetwork9
+};
+
+// ************************************************************
 // WiFi menu callbacks
 // ************************************************************
 void disconnectWifiCb() {
@@ -205,6 +237,14 @@ void buildWifiMenuDynamic() {
     menuSystem.addAction(wifiMenu, "SmartConfig", smartConfigCb);
     menuSystem.addAction(wifiMenu, "Access Point", openAccessPointCb);
     menuSystem.addAction(wifiMenu, "Scan WiFi", scanWiFiCb);
+
+    int scanCount = wifiManager.getLastScanResultCount();
+    if (scanCount > 0) {
+      menuSystem.addInfo(wifiMenu, "-- Scanned Networks --");
+      for (int i = 0; i < scanCount && i < MAX_SCAN_RESULTS; i++) {
+        menuSystem.addAction(wifiMenu, wifiManager.getLastScanResultSSID(i).c_str(), scanCallbacks[i]);
+      }
+    }
 
     // Copy current values into char buffers for string editing
     strncpy(wifiSSIDBuffer, cc->WiFiSSID.c_str(), sizeof(wifiSSIDBuffer) - 1);
@@ -354,9 +394,39 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
   display->print("Volume: ");
   display->print(volume);
 
-  // Hint at bottom
-  display->setCursor(0, height - 10);
-  display->print("[Press Enc for Menu]");
+  // Song title scroll (or fallback hint) at bottom
+  const uint8_t scrollY = height - 8;
+  display->fillRect(0, scrollY, width, height - scrollY, SH110X_BLACK);
+  const char* songTitle = radioOutputManager.getSongTitle();
+  if (songTitle[0] != '\0' && radioOutputManager.isPlaying()) {
+    static char lastTitle[64] = "";
+    static int scrollPos = 0;
+    static unsigned long lastScrollTick = 0;
+
+    if (strncmp(songTitle, lastTitle, sizeof(lastTitle)) != 0) {
+      strncpy(lastTitle, songTitle, sizeof(lastTitle) - 1);
+      lastTitle[sizeof(lastTitle) - 1] = '\0';
+      scrollPos = 0;
+      lastScrollTick = millis();
+    }
+
+    int titlePx = strlen(songTitle) * 6;
+    if (titlePx > width) {
+      unsigned long now = millis();
+      if (now - lastScrollTick >= 50) {
+        scrollPos += 2;
+        if (scrollPos >= titlePx + 16) scrollPos = 0;
+        lastScrollTick = now;
+      }
+    }
+    display->setTextWrap(false);
+    display->setCursor(-scrollPos, scrollY);
+    display->print(songTitle);
+    display->setTextWrap(true);
+  } else {
+    display->setCursor(0, scrollY);
+    display->print("[Press Enc for Menu]");
+  }
 }
 
 // ************************************************************

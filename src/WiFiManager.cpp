@@ -34,7 +34,7 @@ void WiFiEvent(WiFiEvent_t event, arduino_event_info_t info)
     debugMsgWfm("Host name: " + String(WiFi.getHostname()));
     wifiManager.saveWiFiCredentials(WiFi.SSID(), WiFi.psk());
     wifiManager.startWiFiServices();
-    menuSystem.showFlashMessage(("Connected to " + WiFi.SSID()).c_str());
+    menuSystem.showFlashMessage(("Connected to\n" + WiFi.SSID()).c_str());
     break;
   case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
     debugMsgWfm("Disconnected from station");
@@ -128,6 +128,7 @@ void WiFiManager_::processScanResults() {
     debugMsgWfm(String(n) + " networks found");
     menuSystem.showFlashMessage(("Found " + String(n) + " networks").c_str());
   }
+  buildWifiMenuDynamic();
 }
 
 //     String result = "";

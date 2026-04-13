@@ -59,6 +59,11 @@ class RadioOutputManager_ {
       bool isRadioBtMode();
       String getStationName() { return _stationName; }
       String getUrl() { return _url; }
+      const char* getSongTitle() { return _songTitle; }
+      void setSongTitle(const char* title) {
+        strncpy(_songTitle, title, sizeof(_songTitle) - 1);
+        _songTitle[sizeof(_songTitle) - 1] = '\0';
+      }
 
     private:
       AudioFileSourceICYStream *file = nullptr;
@@ -70,6 +75,7 @@ class RadioOutputManager_ {
       float _fgain = DEFAULT_GAIN;
       String _url = "";
       String _stationName = "";
+      char _songTitle[64] = "";
       volatile bool playing = false;
       volatile bool audioTaskRunning = false;
       TaskHandle_t audioTaskHandle = nullptr;

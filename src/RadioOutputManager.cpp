@@ -57,6 +57,7 @@ void RadioOutputManager_::startRadioStream(String url, String stationName, float
   _url = url;
   _stationName = stationName;
   _fgain = gain;
+  _songTitle[0] = '\0';
   StartPlaying();
 }
 
@@ -287,7 +288,10 @@ static void MDCallback(void *cbData, const char *type, bool isUnicode, const cha
   s1[sizeof(s1) - 1] = 0;
   strncpy_P(s2, string, sizeof(s2));
   s2[sizeof(s2) - 1] = 0;
-  debugMsgInr("METADATA(" + String(ptr) + ") '" + String(s1) + "' = '" + String(s2));                                                                      
+  debugMsgInr("METADATA(" + String(ptr) + ") '" + String(s1) + "' = '" + String(s2));
+  if (strcmp(s1, "StreamTitle") == 0) {
+    radioOutputManager.setSongTitle(s2);
+  }
 }
 
 static void StatusCallback(void *cbData, int code, const char *string) {

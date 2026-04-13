@@ -1116,16 +1116,34 @@ void MenuSystem::renderFlashMessage()
   display->setTextSize(1);
   display->setTextColor(SH110X_WHITE);
 
-  // Measure the message text
-  int16_t x1, y1;
-  uint16_t w, h;
-  display->getTextBounds(flashMessage, 0, 0, &x1, &y1, &w, &h);
+  // Split message into lines and measure each independently
+  const uint8_t lineH = 10;  // height per line at textSize 1
+  char buf[sizeof(flashMessage)];
+  strncpy(buf, flashMessage, sizeof(buf));
+
+  uint8_t lineCount = 1;
+  for (char* p = buf; *p; p++) {
+    if (*p == '\n') lineCount++;
+  }
+
+  // Find the widest line to size the box
+  uint16_t maxW = 0;
+  char* line = buf;
+  char lineCopy[sizeof(flashMessage)];
+  for (uint8_t i = 0; i <= lineCount; i++) {
+    char* nl = strchr(line, '\n');
+    if (nl) *nl = '\0';
+    int16_t x1, y1; uint16_t lw, lh;
+    display->getTextBounds(line, 0, 0, &x1, &y1, &lw, &lh);
+    if (lw > maxW) maxW = lw;
+    if (nl) { *nl = '\n'; line = nl + 1; } else break;
+  }
 
   // Draw a bordered box centered on screen
-  uint8_t boxW = w + 16;
-  uint8_t boxH = h + 16;
-  if (boxW > screenWidth)
-    boxW = screenWidth;
+  uint8_t totalH = lineCount * lineH;
+  uint8_t boxW = maxW + 16;
+  uint8_t boxH = totalH + 16;
+  if (boxW > screenWidth) boxW = screenWidth;
   uint8_t boxX = (screenWidth - boxW) / 2;
   uint8_t boxY = (screenHeight - boxH) / 2;
 
@@ -1133,11 +1151,21 @@ void MenuSystem::renderFlashMessage()
   display->drawRect(boxX, boxY, boxW, boxH, SH110X_WHITE);
   display->drawRect(boxX + 1, boxY + 1, boxW - 2, boxH - 2, SH110X_WHITE);
 
-  // Center the text inside the box
-  uint8_t textX = (screenWidth - w) / 2;
-  uint8_t textY = (screenHeight - h) / 2;
-  display->setCursor(textX, textY);
-  display->print(flashMessage);
+  // Print each line centered individually
+  uint8_t curY = (screenHeight - totalH) / 2;
+  strncpy(buf, flashMessage, sizeof(buf));
+  line = buf;
+  for (uint8_t i = 0; i < lineCount; i++) {
+    char* nl = strchr(line, '\n');
+    if (nl) *nl = '\0';
+    int16_t x1, y1; uint16_t lw, lh;
+    display->getTextBounds(line, 0, 0, &x1, &y1, &lw, &lh);
+    uint8_t textX = (screenWidth - lw) / 2;
+    display->setCursor(textX, curY);
+    display->print(line);
+    curY += lineH;
+    if (nl) line = nl + 1; else break;
+  }
 }
 
 // Show a temporary flash message overlay
