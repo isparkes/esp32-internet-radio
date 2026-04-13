@@ -410,17 +410,18 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
       lastScrollTick = millis();
     }
 
-    int titlePx = strlen(songTitle) * 6;
-    if (titlePx > width) {
-      unsigned long now = millis();
-      if (now - lastScrollTick >= 50) {
-        scrollPos += 2;
-        if (scrollPos >= titlePx + 16) scrollPos = 0;
-        lastScrollTick = now;
-      }
+    // Carousel: unit = title + 4-space gap, scroll wraps at one unit width
+    int unitPx = (strlen(songTitle) + 4) * 6;
+    unsigned long now = millis();
+    if (now - lastScrollTick >= 50) {
+      scrollPos += 2;
+      if (scrollPos >= unitPx) scrollPos = 0;
+      lastScrollTick = now;
     }
     display->setTextWrap(false);
     display->setCursor(-scrollPos, scrollY);
+    display->print(songTitle);
+    display->print("    ");
     display->print(songTitle);
     display->setTextWrap(true);
   } else {
