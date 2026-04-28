@@ -37,6 +37,7 @@ class RadioOutputManager_ {
       void audioOncePerHour();
       void audioOncePerLoop();
       bool isPlaying() { return playing; }
+      bool isReconnecting() { return reconnecting; }
       bool isMuted() { return (_fgain == 0.0f); }
       bool togglePlay() {
         if (playing) {
@@ -84,6 +85,11 @@ class RadioOutputManager_ {
       bool audioInlineMode = false;             // true when running decoder in main loop (no task)
       AudioMode currentAudioMode = AUDIO_MODE_RADIO;
       bool btPlayPending = false;  // true while waiting for BT source to connect
+      volatile bool streamFailed = false;  // set by audio task when mp3->loop() returns false unexpectedly
+      bool reconnecting = false;           // true while waiting to retry after a stream failure
+      unsigned long reconnectAt = 0;       // millis() timestamp to attempt reconnect
+      static const unsigned long RECONNECT_DELAY_MS = 5000;
+      static const unsigned long RECONNECT_WIFI_WAIT_MS = 15000;
 
       static void audioTask(void *param);
   };

@@ -360,13 +360,21 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
   display->setCursor(0, yPos);
   if (radioOutputManager.isRadioMode()) {
     display->print("Radio: ");
-    display->print(radioOutputManager.isPlaying() ? "Playing" : "Stopped");
+    if (radioOutputManager.isPlaying()) {
+      display->print("Playing");
+    } else if (radioOutputManager.isReconnecting()) {
+      display->print("Resyncing");
+    } else {
+      display->print("Stopped");
+    }
   }
 #ifdef FEATURE_BLUETOOTH
   else if (radioOutputManager.isRadioBtMode()) {
     display->print("Radio>BT: ");
     if (radioOutputManager.isPlaying()) {
       display->print("Streaming");
+    } else if (radioOutputManager.isReconnecting()) {
+      display->print("Resyncing");
     } else if (bluetoothManager.isBluetoothSourceConnected()) {
       display->print("BT ready");
     } else {

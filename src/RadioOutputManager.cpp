@@ -138,6 +138,11 @@ void RadioOutputManager_::StartPlaying() {
 void RadioOutputManager_::StopPlaying() {
   debugMsgAud("Stop play");
 
+  // Cancel any pending reconnect - this is an intentional stop
+  streamFailed = false;
+  reconnecting = false;
+  reconnectAt = 0;
+
   // Stop the audio task first
   audioTaskRunning = false;
   if (audioTaskHandle) {
@@ -226,6 +231,7 @@ void RadioOutputManager_::audioOncePerLoop() {
   if (audioInlineMode && playing && mp3) {
     if (!mp3->loop()) {
       debugMsgAud("Stream ended (inline)");
+      streamFailed = true;
       playing = false;
       audioTaskRunning = false;
       audioInlineMode = false;
@@ -235,7 +241,25 @@ void RadioOutputManager_::audioOncePerLoop() {
   // Check if the audio task flagged stream end - clean up from main loop context
   if (!audioTaskRunning && !playing && (mp3 || buff || file || out)) {
     debugMsgAud("Cleaning up after stream end");
+    bool wasStreamFailed = streamFailed;  // save before StopPlaying() clears it
     StopPlaying();
+    if (wasStreamFailed) {
+      reconnecting = true;
+      reconnectAt = millis() + RECONNECT_DELAY_MS;
+      debugMsgAud("Stream failed - reconnect in " + String(RECONNECT_DELAY_MS / 1000) + "s");
+      menuSystem.showFlashMessage("Resyncing...");
+    }
+  }
+
+  // Handle scheduled reconnect after a stream failure
+  if (reconnecting && !playing) {
+    if (WiFi.status() != WL_CONNECTED) {
+      reconnectAt = millis() + RECONNECT_WIFI_WAIT_MS;
+    } else if (millis() >= reconnectAt) {
+      debugMsgAud("Attempting stream reconnect");
+      reconnecting = false;
+      StartPlaying();
+    }
   }
 
 #ifdef FEATURE_BLUETOOTH
@@ -269,6 +293,7 @@ void RadioOutputManager_::audioTask(void *param) {
     if (self->playing && self->mp3) {
       if (!self->mp3->loop()) {
         debugMsgAud("Stream ended - stopping playback");
+        self->streamFailed = true;
         self->audioTaskRunning = false;
         self->playing = false;
       }
