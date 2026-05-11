@@ -29,6 +29,7 @@ class RadioOutputManager_ {
 
     public:
       void initializeAudioOutput();
+      void playStartupJingle();
       void startRadioStream(String url, String stationName, float gain);
       void stopRadioStream();
       void StartPlaying();

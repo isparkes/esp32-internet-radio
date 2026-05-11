@@ -1,4 +1,6 @@
 #include "RadioOutputManager.h"
+#include <SPIFFS.h>
+#include <AudioFileSourceFS.h>
 #include "BluetoothManager.h"
 #include "RadioMenuConfiguration.h"
 #include "Globals.h"
@@ -25,6 +27,33 @@ public:
   }
 };
 #endif
+
+// ************************************************************
+// Play a short startup jingle via I2S
+// ************************************************************
+void RadioOutputManager_::playStartupJingle() {
+  AudioFileSourceFS *src = new AudioFileSourceFS(SPIFFS, "/startup.mp3");
+  if (!src->isOpen()) {
+    debugMsgAud("startup.mp3 not found in SPIFFS - skipping jingle");
+    delete src;
+    return;
+  }
+
+  AudioOutputI2S *jingleOut = new AudioOutputI2S();
+  jingleOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  jingleOut->SetGain(DEFAULT_GAIN);
+
+  AudioGeneratorMP3 *mp3Jingle = new AudioGeneratorMP3();
+  mp3Jingle->begin(src, jingleOut);
+  while (mp3Jingle->isRunning()) {
+    if (!mp3Jingle->loop()) mp3Jingle->stop();
+  }
+
+  delete mp3Jingle;
+  delete src;
+  i2s_driver_uninstall(I2S_NUM_0);
+  delete jingleOut;
+}
 
 // ************************************************************
 // Set up the audio output
@@ -105,7 +134,6 @@ void RadioOutputManager_::StartPlaying() {
   {
     AudioOutputI2S *i2sOut = new AudioOutputI2S();
     i2sOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-    i2sOut->SetOutputModeMono(true);
     out = i2sOut;
   }
   out->SetGain(_fgain);

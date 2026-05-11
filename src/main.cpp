@@ -127,6 +127,7 @@ void setup() {
   disableCore1WDT();
 
   radioOutputManager.initializeAudioOutput();
+  radioOutputManager.playStartupJingle();
 
   // -------------------------------------------------------------------------
 
