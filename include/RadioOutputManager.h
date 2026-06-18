@@ -12,7 +12,8 @@
 #include "Defs.h"
 #include "DebugManager.h"
 
-const int bufferSize = 256 * 1024; // 64KB buffer in PSRAM (was 16KB in SRAM)
+static const size_t PSRAM_BUFFER_SIZE = 256 * 1024;
+static const size_t SRAM_BUFFER_MAX  =  32 * 1024;
 
 static void StatusCallback(void *cbData, int code, const char *string);
 static void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string);
@@ -62,6 +63,10 @@ class RadioOutputManager_ {
       String getStationName() { return _stationName; }
       String getUrl() { return _url; }
       const char* getSongTitle() { return _songTitle; }
+      int getBufferFillPercent() const {
+        if (!buff || audioBufferSize == 0) return 0;
+        return (int)((uint32_t)buff->getFillLevel() * 100UL / audioBufferSize);
+      }
       void setSongTitle(const char* title) {
         strncpy(_songTitle, title, sizeof(_songTitle) - 1);
         _songTitle[sizeof(_songTitle) - 1] = '\0';
@@ -72,7 +77,8 @@ class RadioOutputManager_ {
       AudioFileSourceBuffer *buff = nullptr;
       AudioGeneratorMP3 *mp3 = nullptr;
       AudioOutput *out = nullptr;
-      uint8_t *audioBuffer = nullptr;  // PSRAM-allocated streaming buffer
+      uint8_t *audioBuffer = nullptr;
+      size_t audioBufferSize = 0;
 
       float _fgain = DEFAULT_GAIN;
       String _url = "";

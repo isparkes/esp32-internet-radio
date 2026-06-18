@@ -402,6 +402,16 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
   display->print("Volume: ");
   display->print(volume);
 
+  // Buffer fill bar — outline rect with proportional fill, right-aligned
+  if (radioOutputManager.isPlaying()) {
+    const uint8_t barX = 80, barW = 46, barH = 7;
+    int fillPct = radioOutputManager.getBufferFillPercent();
+    display->drawRect(barX, yPos, barW, barH, SH110X_WHITE);
+    if (fillPct > 0) {
+      display->fillRect(barX + 1, yPos + 1, (barW - 2) * fillPct / 100, barH - 2, SH110X_WHITE);
+    }
+  }
+
   // Song title scroll (or fallback hint) at bottom
   const uint8_t scrollY = height - 8;
   display->fillRect(0, scrollY, width, height - scrollY, SH110X_BLACK);

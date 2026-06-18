@@ -114,16 +114,26 @@ void RadioOutputManager_::StartPlaying() {
   file = new AudioFileSourceICYStream(_url.c_str());
   file->RegisterMetadataCB(MDCallback, (void*)"ICY");
 
-  // Allocate streaming buffer from PSRAM if available, otherwise fall back to SRAM
+  // Allocate streaming buffer — prefer PSRAM, otherwise use up to half of largest
+  // contiguous free SRAM block (capped at SRAM_BUFFER_MAX).
   if (psramFound()) {
-    audioBuffer = (uint8_t *)ps_malloc(bufferSize);
-    debugMsgAud("Audio buffer: " + String(bufferSize / 1024) + "KB from PSRAM");
+    audioBuffer = (uint8_t *)ps_malloc(PSRAM_BUFFER_SIZE);
+    if (audioBuffer) {
+      audioBufferSize = PSRAM_BUFFER_SIZE;
+      debugMsgAud("Audio buffer: " + String(PSRAM_BUFFER_SIZE / 1024) + "KB from PSRAM");
+    }
   }
   if (!audioBuffer) {
-    audioBuffer = (uint8_t *)malloc(bufferSize);
-    debugMsgAud("Audio buffer: " + String(bufferSize / 1024) + "KB from SRAM");
+    size_t available = ESP.getMaxAllocHeap();
+    audioBufferSize  = min(SRAM_BUFFER_MAX, available / 2);
+    audioBuffer      = (uint8_t *)malloc(audioBufferSize);
+    if (!audioBuffer) {
+      debugMsgAud("Buffer alloc failed (free=" + String(available) + ") - cannot play");
+      return;
+    }
+    debugMsgAud("Audio buffer: " + String(audioBufferSize / 1024) + "KB from SRAM (free was " + String(available / 1024) + "KB)");
   }
-  buff = new AudioFileSourceBuffer(file, audioBuffer, bufferSize);
+  buff = new AudioFileSourceBuffer(file, audioBuffer, audioBufferSize);
   buff->RegisterStatusCB(StatusCallback, (void*)"buffer");
 
 #ifdef FEATURE_BLUETOOTH
@@ -240,7 +250,7 @@ void RadioOutputManager_::setVolume(int vol) {
 //
 // ************************************************************
 void RadioOutputManager_::audioOncePerSecond() {
-  debugMsgAud("Buffer " + String(buff->getFillLevel()) + "/" + String(bufferSize));
+  debugMsgAud("Buffer " + String(buff->getFillLevel()) + "/" + String(audioBufferSize));
 }
 
 // ************************************************************
