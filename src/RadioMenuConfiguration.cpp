@@ -17,11 +17,16 @@ static char wifiPasswordBuffer[64];
 // ************************************************************
 // Audio menu callbacks
 // ************************************************************
-// Station selection callbacks (one per MAX_STATIONS slot)
+static const int MAX_MENU_STATIONS = 9;
+// Persistent name buffers — kept alive between menu rebuilds so the menu
+// system can hold const char* pointers without copying them internally.
+static char stationNameBufs[MAX_MENU_STATIONS][48];
+
 static void playStation(int idx) {
-  if (idx >= 0 && idx < stationCount) {
+  String name, url;
+  if (spiffsStorage.getStation(idx, name, url)) {
     float gain = (volume / 100.0f) * MAX_GAIN;
-    radioOutputManager.startRadioStream(stations[idx].url, stations[idx].name, gain);
+    radioOutputManager.startRadioStream(url, name, gain);
   }
   buildAudioMenuDynamic();
 }
@@ -183,8 +188,13 @@ void buildAudioMenuDynamic() {
 
   if (radioOutputManager.isRadioMode()) {
     menuSystem.addInfo(audioMenu, "Mode: Radio");
-    for (int i = 0; i < stationCount && i < MAX_STATIONS; i++) {
-      menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
+    int count = spiffsStorage.getStationCount();
+    for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
+      String name, url;
+      spiffsStorage.getStation(i, name, url);
+      strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
+      stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
+      menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
     }
     menuSystem.addAction(audioMenu, "Stop", stopPlaying);
 #ifdef FEATURE_BLUETOOTH
@@ -200,8 +210,13 @@ void buildAudioMenuDynamic() {
     } else {
       menuSystem.addInfo(audioMenu, "Status: Connecting");
     }
-    for (int i = 0; i < stationCount && i < MAX_STATIONS; i++) {
-      menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
+    int count = spiffsStorage.getStationCount();
+    for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
+      String name, url;
+      spiffsStorage.getStation(i, name, url);
+      strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
+      stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
+      menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
     }
     menuSystem.addAction(audioMenu, "Switch to Radio", switchToRadioMode);
   } else {
@@ -292,8 +307,13 @@ void buildRadioMenus() {
   audioMenu = menuSystem.createMenu("Audio");
   if (radioOutputManager.isRadioMode()) {
     menuSystem.addInfo(audioMenu, "Mode: Radio");
-    for (int i = 0; i < stationCount && i < MAX_STATIONS; i++) {
-      menuSystem.addAction(audioMenu, stations[i].name.c_str(), stationCallbacks[i]);
+    int count = spiffsStorage.getStationCount();
+    for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
+      String name, url;
+      spiffsStorage.getStation(i, name, url);
+      strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
+      stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
+      menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
     }
     menuSystem.addAction(audioMenu, "Stop", stopPlaying);
 #ifdef FEATURE_BLUETOOTH

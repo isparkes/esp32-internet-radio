@@ -61,10 +61,11 @@ void RadioOutputManager_::playStartupJingle() {
 void RadioOutputManager_::initializeAudioOutput() {
   debugManagerLink("RadioOutputManager: Initializing audio output");
 
-  // Set default station from stored station list
-  if (stationCount > 0) {
-    _url = stations[0].url;
-    _stationName = stations[0].name;
+  // Set default station — reads first entry from stations.json
+  String name, url;
+  if (spiffsStorage.getStation(0, name, url)) {
+    _url = url;
+    _stationName = name;
   } else {
     _url = "http://mp3.ffh.de/radioffh/hqlivestream.mp3";
     _stationName = "Radio FFH";

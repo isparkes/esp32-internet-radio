@@ -694,29 +694,17 @@ void radioPageHandler(AsyncWebServerRequest *request) {
 // GET /api/stations - return station list as JSON array
 // ************************************************************
 void getStationsHandler(AsyncWebServerRequest *request) {
-  AsyncResponseStream *response = request->beginResponseStream("application/json");
-  DynamicJsonBuffer jsonBuffer;
-  JsonArray &arr = jsonBuffer.createArray();
-
-  for (int i = 0; i < stationCount; i++) {
-    JsonObject &s = arr.createNestedObject();
-    s["name"] = stations[i].name;
-    s["url"] = stations[i].url;
+  if (!SPIFFS.exists("/config/stations.json")) {
+    request->send(200, "application/json", "[]");
+    return;
   }
-
-  arr.printTo(*response);
-  request->send(response);
+  request->send(SPIFFS, "/config/stations.json", "application/json");
 }
 
 // ************************************************************
 // POST /api/stations - add a station
 // ************************************************************
 void postStationHandler(AsyncWebServerRequest *request) {
-  if (stationCount >= MAX_STATIONS) {
-    request->send(200, "application/json", "{\"status\":\"Station list full\"}");
-    return;
-  }
-
   String name = request->hasArg("name") ? request->arg("name") : "";
   String url = request->hasArg("url") ? request->arg("url") : "";
 
@@ -725,12 +713,11 @@ void postStationHandler(AsyncWebServerRequest *request) {
     return;
   }
 
-  stations[stationCount].name = name;
-  stations[stationCount].url = url;
-  stationCount++;
-
-  spiffsStorage.saveStationsToSpiffs();
-  request->send(200, "application/json", "{\"status\":\"Station added\"}");
+  if (spiffsStorage.appendStation(name, url)) {
+    request->send(200, "application/json", "{\"status\":\"Station added\"}");
+  } else {
+    request->send(200, "application/json", "{\"status\":\"Failed to save\"}");
+  }
 }
 
 // ************************************************************
@@ -743,21 +730,11 @@ void deleteStationHandler(AsyncWebServerRequest *request) {
   }
 
   int idx = request->arg("index").toInt();
-  if (idx < 0 || idx >= stationCount) {
+  if (spiffsStorage.deleteStation(idx)) {
+    request->send(200, "application/json", "{\"status\":\"Station deleted\"}");
+  } else {
     request->send(200, "application/json", "{\"status\":\"Invalid index\"}");
-    return;
   }
-
-  // Shift remaining stations down
-  for (int i = idx; i < stationCount - 1; i++) {
-    stations[i] = stations[i + 1];
-  }
-  stationCount--;
-  stations[stationCount].name = "";
-  stations[stationCount].url = "";
-
-  spiffsStorage.saveStationsToSpiffs();
-  request->send(200, "application/json", "{\"status\":\"Station deleted\"}");
 }
 
 // ************************************************************
@@ -783,16 +760,14 @@ void getStatusHandler(AsyncWebServerRequest *request) {
 // POST /api/play - play a station by index
 // ************************************************************
 void postPlayHandler(AsyncWebServerRequest *request) {
-  int idx = request->hasArg("index") ? request->arg("index").toInt() : -1;
-
-  if (idx >= 0 && idx < stationCount) {
+  int idx = request->hasArg("index") ? request->arg("index").toInt() : 0;
+  String name, url;
+  if (!spiffsStorage.getStation(idx, name, url) && idx != 0) {
+    spiffsStorage.getStation(0, name, url);
+  }
+  if (name.length() > 0) {
     float gain = (volume / 100.0f) * MAX_GAIN;
-    radioOutputManager.startRadioStream(stations[idx].url, stations[idx].name, gain);
-    request->send(200, "application/json", "{\"status\":\"Playing\"}");
-  } else if (stationCount > 0) {
-    // Play first station if no valid index
-    float gain = (volume / 100.0f) * MAX_GAIN;
-    radioOutputManager.startRadioStream(stations[0].url, stations[0].name, gain);
+    radioOutputManager.startRadioStream(url, name, gain);
     request->send(200, "application/json", "{\"status\":\"Playing\"}");
   } else {
     request->send(200, "application/json", "{\"status\":\"No stations\"}");

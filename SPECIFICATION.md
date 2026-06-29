@@ -4,7 +4,7 @@
 
 ESP32-based internet radio that streams MP3 audio over WiFi to an I2S DAC. Supports Bluetooth A2DP sink mode as an alternative audio source. User interaction via a 128x64 OLED display with rotary encoder and buttons. Remote control via a web interface.
 
-Software version: `INR-ESP32 0.0.1.0`
+Software version: `INR-ESP32 1.0.0.0`
 
 ## System Architecture
 
@@ -29,8 +29,8 @@ Single factory app partition (no OTA). OTA was removed to maximize app space.
 
 ### Memory Budget (typical)
 
-- RAM usage: ~19.5% of 320 KB
-- Flash usage: ~64.4% of ~3 MB app partition
+- RAM usage: ~16.5% of 320 KB
+- Flash usage: ~83% of 1.5 MB app partition
 
 ## Audio Subsystem
 
@@ -112,7 +112,7 @@ Status Screen (default)
           └─ Reset WiFi
 ```
 
-The status screen shows: title, audio mode/status, WiFi IP, and volume. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu.
+The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second system-info overlay (IP, heap, streams played, frames decoded).
 
 Menus are rebuilt dynamically when state changes (e.g., WiFi connects/disconnects, mode switches).
 
@@ -203,10 +203,11 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 
 ### Station Storage
 
-- Up to `MAX_STATIONS` (9) stations
-- Stored as a JSON array in `/config/stations.json`
-- Default station seeded on first boot: "Radio FFH" (`http://mp3.ffh.de/radioffh/hqlivestream.mp3`)
-- Managed via web interface or future menu additions
+- Stored as a JSON array in `/config/stations.json`; no fixed limit on count
+- Read directly from SPIFFS on demand — no in-memory array; each call to `getStationCount()`, `getStation()`, `appendStation()`, or `deleteStation()` opens, operates on, and closes the file
+- Default station seeded automatically on first access if the file is absent: "Radio FFH" (`http://mp3.ffh.de/radioffh/hqlivestream.mp3`)
+- The OLED Audio menu shows up to 9 stations (one callback slot per entry); the JSON file may contain more
+- Managed via web interface (`/radio` page)
 
 ### Configuration (`config.json`)
 
@@ -240,7 +241,6 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 | `OLED_SH1106` | `OLED_SH1106` / `OLED_SSD1306` | OLED controller type |
 | `DEBUG` | `DEBUG` / `DEBUG_OFF` | Enable serial debug logging |
 | `FEATURE_MENU` | defined or not | Enable OLED menu system |
-| `MAX_STATIONS` | integer (default 9) | Max stored stations |
 | `MAX_GAIN` | float (default 1.2) | Audio gain ceiling |
 
 ## Known Constraints

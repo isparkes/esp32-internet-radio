@@ -25,13 +25,16 @@ class SpiffsStorage_
     bool testMountSpiffs();
     bool getSpiffsMounted();
 
-    // These load/store the global objects, defined in globals.h
     bool getConfigFromSpiffs();
     void saveConfigToSpiffs();
     bool getStatsFromSpiffs();
     void saveStatsToSpiffs();
-    bool getStationsFromSpiffs();
-    void saveStationsToSpiffs();
+
+    // Direct per-operation station access (reads/writes stations.json each call)
+    int  getStationCount();
+    bool getStation(int idx, String& name, String& url);
+    bool appendStation(const String& name, const String& url);
+    bool deleteStation(int idx);
 
     JsonObject& getConfigAsJsonObject();
   private:

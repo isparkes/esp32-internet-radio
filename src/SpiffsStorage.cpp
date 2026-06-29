@@ -172,86 +172,105 @@ void SpiffsStorage_::saveStatsToSpiffs()
 
 
 // ************************************************************
-// Retrieve stations from SPIFFS
+// Station helpers — read/write stations.json on demand (no in-memory array)
 // ************************************************************
-bool SpiffsStorage_::getStationsFromSpiffs()
-{
-  bool loaded = false;
-  if (SPIFFS.exists("/config/stations.json"))
-  {
-    debugMsgSpf("Reading stations file");
-    File file = SPIFFS.open("/config/stations.json", "r");
-    if (file)
-    {
-      size_t size = file.size();
-      // Allocate a buffer from PSRAM if available
-      char *rawBuf = psramFound() ? (char *)ps_malloc(size) : nullptr;
-      if (!rawBuf) rawBuf = (char *)malloc(size);
-      std::unique_ptr<char[], decltype(&free)> buf(rawBuf, free);
-      file.readBytes(buf.get(), size);
-      DynamicJsonBuffer jsonBuffer;
-      JsonArray &arr = jsonBuffer.parseArray(buf.get());
-      if (arr.success())
-      {
-        stationCount = 0;
-        for (int i = 0; i < (int)arr.size() && i < MAX_STATIONS; i++)
-        {
-          JsonObject &s = arr[i];
-          stations[i].name = s["name"].as<String>();
-          stations[i].url = s["url"].as<String>();
-          stationCount++;
-        }
-        debugMsgSpf("Loaded " + String(stationCount) + " stations");
-        loaded = true;
-      }
-      else
-      {
-        debugMsgSpf("Failed to parse stations json");
-      }
-      file.close();
-    }
-  }
 
-  // Seed a default station if none loaded
-  if (!loaded || stationCount == 0)
-  {
-    debugMsgSpf("No stations found - adding default");
-    stations[0].name = "Radio FFH";
-    stations[0].url = "http://mp3.ffh.de/radioffh/hqlivestream.mp3";
-    stationCount = 1;
-    saveStationsToSpiffs();
-    loaded = true;
-  }
+static const char* STATIONS_FILE = "/config/stations.json";
 
-  return loaded;
+// Allocate and return a null-terminated copy of stations.json.
+// Returns nullptr if the file doesn't exist or can't be read.
+// Caller must free() the returned pointer.
+static char* readStationsRaw() {
+  if (!SPIFFS.exists(STATIONS_FILE)) return nullptr;
+  File f = SPIFFS.open(STATIONS_FILE, "r");
+  if (!f) return nullptr;
+  size_t sz = f.size();
+  char* raw = psramFound() ? (char*)ps_malloc(sz + 1) : nullptr;
+  if (!raw) raw = (char*)malloc(sz + 1);
+  if (!raw) { f.close(); return nullptr; }
+  f.readBytes(raw, sz);
+  raw[sz] = '\0';
+  f.close();
+  return raw;
 }
 
-// ************************************************************
-// Save stations to SPIFFS
-// ************************************************************
-void SpiffsStorage_::saveStationsToSpiffs()
-{
-  debugMsgSpf("Saving stations");
+int SpiffsStorage_::getStationCount() {
+  char* raw = readStationsRaw();
+  if (!raw) {
+    // No file yet — seed a default and return 1
+    appendStation("Radio FFH", "http://mp3.ffh.de/radioffh/hqlivestream.mp3");
+    return 1;
+  }
   DynamicJsonBuffer jsonBuffer;
-  JsonArray &arr = jsonBuffer.createArray();
+  JsonArray& arr = jsonBuffer.parseArray(raw);
+  int count = arr.success() ? (int)arr.size() : 0;
+  free(raw);
+  return count;
+}
 
-  for (int i = 0; i < stationCount; i++)
-  {
-    JsonObject &s = arr.createNestedObject();
-    s["name"] = stations[i].name;
-    s["url"] = stations[i].url;
+bool SpiffsStorage_::getStation(int idx, String& name, String& url) {
+  char* raw = readStationsRaw();
+  if (!raw) return false;
+  DynamicJsonBuffer jsonBuffer;
+  JsonArray& arr = jsonBuffer.parseArray(raw);
+  if (!arr.success() || idx < 0 || idx >= (int)arr.size()) {
+    free(raw);
+    return false;
   }
+  JsonObject& s = arr[idx];
+  name = s["name"].as<String>();
+  url  = s["url"].as<String>();
+  free(raw);
+  return true;
+}
 
-  File file = SPIFFS.open("/config/stations.json", "w");
-  if (!file)
-  {
-    debugMsgSpf("Failed to open stations file for writing");
-    file.close();
-    return;
+bool SpiffsStorage_::appendStation(const String& name, const String& url) {
+  DynamicJsonBuffer jsonBuffer;
+  JsonArray* arrPtr = nullptr;
+  char* raw = readStationsRaw();
+  if (raw) {
+    JsonArray& parsed = jsonBuffer.parseArray(raw);
+    if (parsed.success()) arrPtr = &parsed;
   }
-  arr.printTo(file);
-  file.close();
-  debugMsgSpf("Saved " + String(stationCount) + " stations");
+  JsonArray& arr = arrPtr ? *arrPtr : jsonBuffer.createArray();
+  JsonObject& s = arr.createNestedObject();
+  s["name"] = name;
+  s["url"]  = url;
+  File f = SPIFFS.open(STATIONS_FILE, "w");
+  if (!f) { if (raw) free(raw); return false; }
+  arr.printTo(f);
+  f.close();
+  if (raw) free(raw);
+  debugMsgSpf("Station appended: " + name);
+  return true;
+}
+
+bool SpiffsStorage_::deleteStation(int idx) {
+  char* raw = readStationsRaw();
+  if (!raw) return false;
+  DynamicJsonBuffer inBuf;
+  JsonArray& arr = inBuf.parseArray(raw);
+  if (!arr.success() || idx < 0 || idx >= (int)arr.size()) {
+    free(raw);
+    return false;
+  }
+  // Rebuild the array without the deleted element using copies of the strings
+  DynamicJsonBuffer outBuf;
+  JsonArray& newArr = outBuf.createArray();
+  for (int i = 0; i < (int)arr.size(); i++) {
+    if (i == idx) continue;
+    JsonObject& src = arr[i];
+    JsonObject& dst = newArr.createNestedObject();
+    dst["name"] = src["name"].as<String>();
+    dst["url"]  = src["url"].as<String>();
+  }
+  free(raw);
+  File f = SPIFFS.open(STATIONS_FILE, "w");
+  if (!f) return false;
+  newArr.printTo(f);
+  f.close();
+  debugMsgSpf("Station deleted at index " + String(idx));
+  return true;
 }
 
 // ************************************************************

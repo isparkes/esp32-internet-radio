@@ -29,7 +29,7 @@ typedef void (*DebugCallback) (String);
 #define debugMsgMnm(message) debugManager.debugMsg("[MNM]", message);
 #define debugMsgAud(message) debugManager.debugMsg("[AUD]", message);
 #else
-#define debugMsgMain(message)
+#define debugMsgInr(message)
 #define debugMsgOtm(message)
 #define debugMsgSpf(message)
 #define debugMsgWbm(message)

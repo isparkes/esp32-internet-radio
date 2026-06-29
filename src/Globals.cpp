@@ -45,10 +45,6 @@ bool upOrDown;
 
 bool blanked = false;
 
-// Station list
-station_t stations[MAX_STATIONS];
-int stationCount = 0;
-
 bool doAutoReconnect = false;
 
 bool encoderToggle = false;

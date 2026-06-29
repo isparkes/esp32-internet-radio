@@ -21,12 +21,6 @@ typedef struct {
 
 } spiffs_config_t;
 
-// Station entry for the station list
-typedef struct {
-  String name;
-  String url;
-} station_t;
-
 typedef struct {
   unsigned long uptimeMins = 0;
   unsigned long playtimeMins = 0;

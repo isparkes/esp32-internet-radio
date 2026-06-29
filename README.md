@@ -81,7 +81,6 @@ Once connected to WiFi, access the device at `http://<device-ip>/` or `http://<h
 Edit `include/Configuration.h` to change:
 
 - `OLED_SH1106` / `OLED_SSD1306` — display type
-- `MAX_STATIONS` — maximum station count (default 9)
 - `MAX_GAIN` — maximum audio gain (default 1.2)
 - `DEBUG` — enable serial debug output
 

@@ -8,10 +8,10 @@
 
 
 // -------------------------------------------------------------------------------
-#define SOFTWARE_VERSION "INR-ESP32 0.0.1.0"
+#define SOFTWARE_VERSION "INR-ESP32 1.0.0.0"
 
 // Add debug statments to code - needs extra space
-#define DEBUG                       // DEBUG | DEBUG_OFF
+#define DEBUG_OFF                   // DEBUG | DEBUG_OFF
 
 // -------------------------------------------------------------------------------
 
@@ -27,9 +27,7 @@
 
 // -------------------------------------------------------------------------------
 
-#define CLOCK_MENU_TITLE "INet Radio"
-
-#define MAX_STATIONS 9                              // Max number of stations in station list
+#define MENU_TITLE "INet Radio"
 
 #define MAX_GAIN 1.20                               // Max gain value before we clip
 #define VOLUME_STEPS 10                             // Number of volume steps
