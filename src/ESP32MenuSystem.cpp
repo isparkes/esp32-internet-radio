@@ -100,6 +100,31 @@ void IRAM_ATTR MenuSystem::encoderSwISR()
   instance->encoderSwPressTime = millis();
 }
 
+// Show splash screen before full init (call before begin())
+void MenuSystem::showSplash(uint8_t sdaPin, uint8_t sclPin, unsigned long durationMs) {
+  Wire.begin(sdaPin, sclPin);
+  display->begin(0x3C, true);
+  display->clearDisplay();
+  display->setTextColor(SH110X_WHITE);
+
+  // Title centred — "INet Radio" at textSize 2 is 120px wide → x=4
+  display->setTextSize(2);
+  display->setCursor(4, 6);
+  display->print("INet Radio");
+
+  display->drawLine(0, 26, 127, 26, SH110X_WHITE);
+
+  // Three concentric top-half arcs as radio waves, source dot at bottom-centre
+  const uint8_t cx = 64, cy = 63;
+  display->drawCircleHelper(cx, cy, 10, 0x03, SH110X_WHITE);
+  display->drawCircleHelper(cx, cy, 20, 0x03, SH110X_WHITE);
+  display->drawCircleHelper(cx, cy, 30, 0x03, SH110X_WHITE);
+  display->fillCircle(cx, cy, 2, SH110X_WHITE);
+
+  display->display();
+  delay(durationMs);
+}
+
 // Initialize the menu system
 bool MenuSystem::begin(uint8_t sdaPin, uint8_t sclPin,
                        uint8_t encClk, uint8_t encDt,

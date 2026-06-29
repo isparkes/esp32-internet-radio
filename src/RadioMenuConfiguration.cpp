@@ -228,6 +228,9 @@ void buildWifiMenuDynamic() {
   menuSystem.clearMenuItems(wifiMenu);
 
   if (WiFi.isConnected()) {
+    char ipInfoBuf[20];
+    snprintf(ipInfoBuf, sizeof(ipInfoBuf), "IP: %s", WiFi.localIP().toString().c_str());
+    menuSystem.addInfo(wifiMenu, ipInfoBuf);
     menuSystem.addAction(wifiMenu, "Disconnect WiFi", disconnectWifiCb);
   } else {
     if (wifiManager.wifiCredentialsReceived()) {
@@ -304,6 +307,9 @@ void buildRadioMenus() {
 
   wifiMenu = menuSystem.createMenu("WiFi");
   if (WiFi.isConnected()) {
+    char ipInfoBuf[20];
+    snprintf(ipInfoBuf, sizeof(ipInfoBuf), "IP: %s", WiFi.localIP().toString().c_str());
+    menuSystem.addInfo(wifiMenu, ipInfoBuf);
     menuSystem.addAction(wifiMenu, "Disconnect WiFi", disconnectWifiCb);
   } else {
     if (wifiManager.wifiCredentialsReceived()) {
@@ -338,6 +344,45 @@ void buildRadioMenus() {
 }
 
 // ************************************************************
+// Status icon drawing helpers (w x h scalable)
+// ************************************************************
+static void drawPlayIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+  display->fillTriangle(x, y, x, y + h - 1, x + w - 1, y + h / 2, SH110X_WHITE);
+}
+
+static void drawStopIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+  display->fillRect(x + 2, y + 2, w - 4, h - 4, SH110X_WHITE);
+}
+
+static void drawResyncIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+  uint8_t cx = x + w / 2, cy = y + h / 2;
+  uint8_t r  = (w < h ? w : h) / 2 - 2;
+  display->drawCircle(cx, cy, r, SH110X_WHITE);
+  display->fillTriangle(cx + r - 2, cy - r, cx + r + 3, cy - r, cx + r, cy - r + 4, SH110X_WHITE);
+}
+
+#ifdef FEATURE_BLUETOOTH
+static void drawConnectingIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+  display->fillTriangle(x, y, x + w - 1, y, x + w / 2, y + h / 2 - 1, SH110X_WHITE);
+  display->fillTriangle(x, y + h - 1, x + w - 1, y + h - 1, x + w / 2, y + h / 2 + 1, SH110X_WHITE);
+}
+
+static void drawConnectedIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+  display->drawLine(x, y + h * 2 / 3, x + w / 3, y + h - 1, SH110X_WHITE);
+  display->drawLine(x + w / 3, y + h - 1, x + w - 1, y + h / 4, SH110X_WHITE);
+}
+
+static void drawBluetoothIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+  uint8_t cx = x + w / 2;
+  display->drawLine(cx, y,            cx,         y + h - 1,      SH110X_WHITE);
+  display->drawLine(cx, y,            x + w - 1,  y + h / 4,      SH110X_WHITE);
+  display->drawLine(x + w - 1, y + h / 4,  cx,   y + h / 2,      SH110X_WHITE);
+  display->drawLine(cx, y + h / 2,    x + w - 1,  y + h * 3 / 4, SH110X_WHITE);
+  display->drawLine(x + w - 1, y + h * 3 / 4, cx, y + h - 1,     SH110X_WHITE);
+}
+#endif
+
+// ************************************************************
 // Status screen renderer
 // ************************************************************
 void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height) {
@@ -356,59 +401,80 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
   display->drawLine(0, yPos, width, yPos, SH110X_WHITE);
   yPos += 4;
 
-  // Audio mode and status
-  display->setCursor(0, yPos);
+  // Layout: 16x16 icon centred vertically across all 3 rows; text/bars indented past it
+  const uint8_t contentY = yPos;                              // = 26
+  const uint8_t iconW    = 16;
+  const uint8_t iconH    = 16;
+  const uint8_t rowH     = 10;
+  const uint8_t indent   = iconW + 4;                        // = 20
+  const uint8_t barH     = 7;
+  // content area height = rowH*2 + barH = 27; centre icon within it
+  const uint8_t iconY    = contentY + (rowH * 2 + barH - iconH) / 2;
+
+  // Row 1: status text (indented); icon centred vertically beside all 3 rows
   if (radioOutputManager.isRadioMode()) {
-    display->print("Radio: ");
     if (radioOutputManager.isPlaying()) {
+      drawPlayIcon(display, 0, iconY, iconW, iconH);
+      display->setCursor(indent, contentY + 1);
       display->print("Playing");
     } else if (radioOutputManager.isReconnecting()) {
+      drawResyncIcon(display, 0, iconY, iconW, iconH);
+      display->setCursor(indent, contentY + 1);
       display->print("Resyncing");
     } else {
+      drawStopIcon(display, 0, iconY, iconW, iconH);
+      display->setCursor(indent, contentY + 1);
       display->print("Stopped");
     }
   }
 #ifdef FEATURE_BLUETOOTH
   else if (radioOutputManager.isRadioBtMode()) {
-    display->print("Radio>BT: ");
     if (radioOutputManager.isPlaying()) {
-      display->print("Streaming");
+      drawPlayIcon(display, 0, iconY, iconW, iconH);
+      display->setCursor(indent, contentY + 1);
+      display->print("Radio>BT");
     } else if (radioOutputManager.isReconnecting()) {
+      drawResyncIcon(display, 0, iconY, iconW, iconH);
+      display->setCursor(indent, contentY + 1);
       display->print("Resyncing");
     } else if (bluetoothManager.isBluetoothSourceConnected()) {
+      drawConnectedIcon(display, 0, iconY, iconW, iconH);
+      display->setCursor(indent, contentY + 1);
       display->print("BT ready");
     } else {
-      display->print("Connecting...");
+      drawConnectingIcon(display, 0, iconY, iconW, iconH);
+      display->setCursor(indent, contentY + 1);
+      display->print("Connecting");
     }
   } else {
-    display->print("BT: ");
-    display->print(bluetoothManager.isBluetoothConnected() ? "Connected" : "Waiting...");
+    drawBluetoothIcon(display, 0, iconY, iconW, iconH);
+    display->setCursor(indent, contentY + 1);
+    display->print(bluetoothManager.isBluetoothConnected() ? "BT Sink" : "BT: Wait");
   }
 #endif
-  yPos += 10;
 
-  // WiFi status
-  display->setCursor(0, yPos);
-  display->print("WiFi: ");
-  if (WiFi.isConnected()) {
-    display->print(WiFi.localIP().toString());
-  } else {
-    display->print("Not connected");
+  // Row 2: Volume label + bar (both indented)
+  const uint8_t row2Y   = contentY + rowH;
+  const uint8_t volBarX = indent + 3 * 6;          // "Vol" = 18 px
+  const uint8_t volBarW = width - volBarX - 1;
+  display->setCursor(indent, row2Y);
+  display->print("Vol");
+  display->drawRect(volBarX, row2Y, volBarW, barH, SH110X_WHITE);
+  if (volume > 0) {
+    display->fillRect(volBarX + 1, row2Y + 1, (volBarW - 2) * volume / 100, barH - 2, SH110X_WHITE);
   }
-  yPos += 10;
 
-  // Volume
-  display->setCursor(0, yPos);
-  display->print("Volume: ");
-  display->print(volume);
-
-  // Buffer fill bar — outline rect with proportional fill, right-aligned
+  // Row 3: Buffer label + bar (both indented)
+  const uint8_t row3Y   = contentY + rowH * 2;
+  const uint8_t bufBarX = indent + 6 * 6;          // "Buffer" = 36 px
+  const uint8_t bufBarW = width - bufBarX - 1;
+  display->setCursor(indent, row3Y);
+  display->print("Buffer");
+  display->drawRect(bufBarX, row3Y, bufBarW, barH, SH110X_WHITE);
   if (radioOutputManager.isPlaying()) {
-    const uint8_t barX = 80, barW = 46, barH = 7;
     int fillPct = radioOutputManager.getBufferFillPercent();
-    display->drawRect(barX, yPos, barW, barH, SH110X_WHITE);
     if (fillPct > 0) {
-      display->fillRect(barX + 1, yPos + 1, (barW - 2) * fillPct / 100, barH - 2, SH110X_WHITE);
+      display->fillRect(bufBarX + 1, row3Y + 1, (bufBarW - 2) * fillPct / 100, barH - 2, SH110X_WHITE);
     }
   }
 

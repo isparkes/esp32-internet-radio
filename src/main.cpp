@@ -15,7 +15,11 @@
 // ************************************************************
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
-  
+
+  #ifdef FEATURE_MENU
+  menuSystem.showSplash(SDAint, SCLint, 2000);
+  #endif
+
   #ifdef DEBUG
   // Debug for 10 minutes
   debugManager.setDebugAutoOff(600);

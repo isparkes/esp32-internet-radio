@@ -213,6 +213,7 @@
    ~MenuSystem();
    
    // Initialization
+   void showSplash(uint8_t sdaPin, uint8_t sclPin, unsigned long durationMs = 2000);
    bool begin(uint8_t sdaPin, uint8_t sclPin,
               uint8_t encClk, uint8_t encDt,
               uint8_t btnConfirm, uint8_t btnBack,
