@@ -382,10 +382,47 @@ static void drawBluetoothIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, u
 }
 #endif
 
+// Timestamp (millis) until which the geek-info overlay should be shown.
+static unsigned long geekInfoUntil = 0;
+
 // ************************************************************
 // Status screen renderer
 // ************************************************************
 void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height) {
+
+  // Geek-info overlay — shown for 2 s after the back button is pressed
+  if (millis() < geekInfoUntil) {
+    display->setTextSize(1);
+    display->setTextColor(SH110X_WHITE);
+
+    display->setCursor(20, 2);
+    display->print("-- System Info --");
+    display->drawLine(0, 12, width, 12, SH110X_WHITE);
+
+    char buf[24];
+
+    // IP address
+    display->setCursor(0, 16);
+    display->print("IP: ");
+    display->print(WiFi.isConnected() ? WiFi.localIP().toString() : "Not connected");
+
+    // Free heap
+    display->setCursor(0, 26);
+    snprintf(buf, sizeof(buf), "Heap: %lu KB", ESP.getFreeHeap() / 1024);
+    display->print(buf);
+
+    // Streams played
+    display->setCursor(0, 36);
+    snprintf(buf, sizeof(buf), "Streams: %lu", (unsigned long)radioOutputManager.getStreamsPlayed());
+    display->print(buf);
+
+    // Frames decoded (show in thousands)
+    display->setCursor(0, 46);
+    snprintf(buf, sizeof(buf), "Frames: %luk", (unsigned long)(radioOutputManager.getFramesDecoded() / 1000));
+    display->print(buf);
+
+    return;
+  }
   display->setTextSize(1);
   display->setTextColor(SH110X_WHITE);
 
@@ -403,26 +440,27 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
 
   // Layout: 16x16 icon centred vertically across all 3 rows; text/bars indented past it
   const uint8_t contentY = yPos;                              // = 26
+  const uint8_t iconX    = 3;                                 // 3 px left margin
   const uint8_t iconW    = 16;
   const uint8_t iconH    = 16;
   const uint8_t rowH     = 10;
-  const uint8_t indent   = iconW + 4;                        // = 20
-  const uint8_t barH     = 7;
-  // content area height = rowH*2 + barH = 27; centre icon within it
+  const uint8_t indent   = iconX + iconW + 7;                 // 3 left + 16 icon + 7 right gap = 26
+  const uint8_t barH     = 5;
+  // content area height = rowH*2 + barH = 25; centre icon within it
   const uint8_t iconY    = contentY + (rowH * 2 + barH - iconH) / 2;
 
   // Row 1: status text (indented); icon centred vertically beside all 3 rows
   if (radioOutputManager.isRadioMode()) {
     if (radioOutputManager.isPlaying()) {
-      drawPlayIcon(display, 0, iconY, iconW, iconH);
+      drawPlayIcon(display, iconX, iconY, iconW, iconH);
       display->setCursor(indent, contentY + 1);
       display->print("Playing");
     } else if (radioOutputManager.isReconnecting()) {
-      drawResyncIcon(display, 0, iconY, iconW, iconH);
+      drawResyncIcon(display, iconX, iconY, iconW, iconH);
       display->setCursor(indent, contentY + 1);
       display->print("Resyncing");
     } else {
-      drawStopIcon(display, 0, iconY, iconW, iconH);
+      drawStopIcon(display, iconX, iconY, iconW, iconH);
       display->setCursor(indent, contentY + 1);
       display->print("Stopped");
     }
@@ -430,51 +468,52 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
 #ifdef FEATURE_BLUETOOTH
   else if (radioOutputManager.isRadioBtMode()) {
     if (radioOutputManager.isPlaying()) {
-      drawPlayIcon(display, 0, iconY, iconW, iconH);
+      drawPlayIcon(display, iconX, iconY, iconW, iconH);
       display->setCursor(indent, contentY + 1);
       display->print("Radio>BT");
     } else if (radioOutputManager.isReconnecting()) {
-      drawResyncIcon(display, 0, iconY, iconW, iconH);
+      drawResyncIcon(display, iconX, iconY, iconW, iconH);
       display->setCursor(indent, contentY + 1);
       display->print("Resyncing");
     } else if (bluetoothManager.isBluetoothSourceConnected()) {
-      drawConnectedIcon(display, 0, iconY, iconW, iconH);
+      drawConnectedIcon(display, iconX, iconY, iconW, iconH);
       display->setCursor(indent, contentY + 1);
       display->print("BT ready");
     } else {
-      drawConnectingIcon(display, 0, iconY, iconW, iconH);
+      drawConnectingIcon(display, iconX, iconY, iconW, iconH);
       display->setCursor(indent, contentY + 1);
       display->print("Connecting");
     }
   } else {
-    drawBluetoothIcon(display, 0, iconY, iconW, iconH);
+    drawBluetoothIcon(display, iconX, iconY, iconW, iconH);
     display->setCursor(indent, contentY + 1);
     display->print(bluetoothManager.isBluetoothConnected() ? "BT Sink" : "BT: Wait");
   }
 #endif
 
-  // Row 2: Volume label + bar (both indented)
-  const uint8_t row2Y   = contentY + rowH;
-  const uint8_t volBarX = indent + 3 * 6;          // "Vol" = 18 px
-  const uint8_t volBarW = width - volBarX - 1;
+  // Shared bar geometry — 90% of available width, right-aligned
+  const uint8_t labelW = 6 * 6;                              // "Volume"/"Buffer" = 36 px
+  const uint8_t barW   = (width - indent - labelW - 1) * 9 / 10;
+  const uint8_t barX   = width - barW - 1;                   // flush to right edge
+
+  // Row 2: Volume label + bar
+  const uint8_t row2Y = contentY + rowH;
   display->setCursor(indent, row2Y);
-  display->print("Vol");
-  display->drawRect(volBarX, row2Y, volBarW, barH, SH110X_WHITE);
+  display->print("Volume");
+  display->drawRect(barX, row2Y, barW, barH, SH110X_WHITE);
   if (volume > 0) {
-    display->fillRect(volBarX + 1, row2Y + 1, (volBarW - 2) * volume / 100, barH - 2, SH110X_WHITE);
+    display->fillRect(barX + 1, row2Y + 1, (barW - 2) * volume / 100, barH - 2, SH110X_WHITE);
   }
 
-  // Row 3: Buffer label + bar (both indented)
-  const uint8_t row3Y   = contentY + rowH * 2;
-  const uint8_t bufBarX = indent + 6 * 6;          // "Buffer" = 36 px
-  const uint8_t bufBarW = width - bufBarX - 1;
+  // Row 3: Buffer label + bar
+  const uint8_t row3Y = contentY + rowH * 2;
   display->setCursor(indent, row3Y);
   display->print("Buffer");
-  display->drawRect(bufBarX, row3Y, bufBarW, barH, SH110X_WHITE);
+  display->drawRect(barX, row3Y, barW, barH, SH110X_WHITE);
   if (radioOutputManager.isPlaying()) {
     int fillPct = radioOutputManager.getBufferFillPercent();
     if (fillPct > 0) {
-      display->fillRect(bufBarX + 1, row3Y + 1, (bufBarW - 2) * fillPct / 100, barH - 2, SH110X_WHITE);
+      display->fillRect(barX + 1, row3Y + 1, (barW - 2) * fillPct / 100, barH - 2, SH110X_WHITE);
     }
   }
 
@@ -520,9 +559,13 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
 bool handleStatusInput(ButtonEvent event) {
   if (event == BTN_CONFIRM_CLICK) {
     radioOutputManager.togglePlay();
-    return true;  // Consume event
+    return true;
   }
-  return false;  // Let default handling (encoder click = menu)
+  if (event == BTN_BACK_CLICK) {
+    geekInfoUntil = millis() + 2000;
+    return true;
+  }
+  return false;
 }
 
 // ************************************************************

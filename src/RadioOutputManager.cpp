@@ -111,7 +111,11 @@ void RadioOutputManager_::StartPlaying() {
   // Clean up any leftover objects
   StopPlaying();
 
-  file = new AudioFileSourceICYStream(_url.c_str());
+  if (_url.startsWith("https://")) {
+    file = new AudioFileSourceICYStreamSecure(_url.c_str());
+  } else {
+    file = new AudioFileSourceICYStream(_url.c_str());
+  }
   file->RegisterMetadataCB(MDCallback, (void*)"ICY");
 
   // Allocate streaming buffer — prefer PSRAM, otherwise use up to half of largest
@@ -151,6 +155,7 @@ void RadioOutputManager_::StartPlaying() {
   mp3->RegisterStatusCB(StatusCallback, (void*)"mp3");
   mp3->begin(buff, out);
 
+  _streamsPlayed++;
   playing = true;
   audioTaskRunning = true;
 
@@ -267,7 +272,9 @@ void RadioOutputManager_::audioOncePerLoop() {
   // Run the decoder inline when no task could be created (e.g. DRAM exhausted by BT).
   // Core 1 WDT is disabled so brief blocking on network I/O is safe.
   if (audioInlineMode && playing && mp3) {
-    if (!mp3->loop()) {
+    if (mp3->loop()) {
+      _framesDecoded++;
+    } else {
       debugMsgAud("Stream ended (inline)");
       streamFailed = true;
       playing = false;
@@ -329,7 +336,9 @@ void RadioOutputManager_::audioTask(void *param) {
 
   while (self->audioTaskRunning) {
     if (self->playing && self->mp3) {
-      if (!self->mp3->loop()) {
+      if (self->mp3->loop()) {
+        self->_framesDecoded++;
+      } else {
         debugMsgAud("Stream ended - stopping playback");
         self->streamFailed = true;
         self->audioTaskRunning = false;

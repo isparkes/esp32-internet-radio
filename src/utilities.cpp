@@ -644,7 +644,7 @@ onchange="setVol(this.value)"><span class="vol-val" id="vv">10</span></div></div
 <div id="sl">Loading...</div></div>
 <div class="card"><h2>Add Station</h2>
 <input type="text" id="sn" placeholder="Station name">
-<input type="text" id="su" placeholder="Stream URL (http://...)">
+<input type="text" id="su" placeholder="Stream URL (http:// or https://)">
 <button onclick="addStation()">Add</button>
 <div id="msg"></div></div>
 <script>
@@ -670,7 +670,7 @@ function setVol(v){api('/api/volume','POST','volume='+v)}
 function addStation(){
 let n=document.getElementById('sn').value,u=document.getElementById('su').value;
 if(!n||!u){document.getElementById('msg').textContent='Name and URL required';return}
-if(!u.startsWith('http://')){notify('Only http:// streams are supported. https:// will not work.','err');return}
+if(!u.startsWith('http://')&&!u.startsWith('https://')){notify('URL must start with http:// or https://','err');return}
 api('/api/stations','POST','name='+encodeURIComponent(n)+'&url='+encodeURIComponent(u)).then(d=>{
 document.getElementById('msg').textContent=d.status||'Added';
 document.getElementById('sn').value='';document.getElementById('su').value='';refresh();

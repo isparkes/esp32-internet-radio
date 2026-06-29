@@ -100,8 +100,10 @@ void IRAM_ATTR MenuSystem::encoderSwISR()
   instance->encoderSwPressTime = millis();
 }
 
-// Show splash screen before full init (call before begin())
-void MenuSystem::showSplash(uint8_t sdaPin, uint8_t sclPin, unsigned long durationMs) {
+// Show splash screen before full init (call before begin()).
+// Splash stays visible until begin() + the first update() render replace it —
+// no artificial delay needed.
+void MenuSystem::showSplash(uint8_t sdaPin, uint8_t sclPin) {
   Wire.begin(sdaPin, sclPin);
   display->begin(0x3C, true);
   display->clearDisplay();
@@ -122,7 +124,7 @@ void MenuSystem::showSplash(uint8_t sdaPin, uint8_t sclPin, unsigned long durati
   display->fillCircle(cx, cy, 2, SH110X_WHITE);
 
   display->display();
-  delay(durationMs);
+  splashShown = true;
 }
 
 // Initialize the menu system
@@ -142,13 +144,15 @@ bool MenuSystem::begin(uint8_t sdaPin, uint8_t sclPin,
   // Initialize I2C
   Wire.begin(sdaPin, sclPin);
 
-  // Initialize display
-  display->begin(0x3C, true); // Address 0x3C, reset=true
-
-  display->clearDisplay();
-  display->setTextSize(1);
-  display->setTextColor(SH110X_WHITE);
-  display->display();
+  // Initialize display — skip if showSplash() already did it so the splash
+  // stays visible until the first update() render overwrites it naturally.
+  if (!splashShown) {
+    display->begin(0x3C, true);
+    display->clearDisplay();
+    display->setTextSize(1);
+    display->setTextColor(SH110X_WHITE);
+    display->display();
+  }
 
   // Setup encoder pins
   pinMode(encoderClkPin, INPUT_PULLUP);

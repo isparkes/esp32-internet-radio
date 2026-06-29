@@ -1,5 +1,10 @@
 [
   {"name":"NumanMe Radio","url":"http://numanme.stream.laut.fm/numanme?"},
   {"name":"Radio FFH","url":"http://mp3.ffh.de/radioffh/hqlivestream.mp3"},
-  {"name":"Classic FM","url":"http://media-ice.musicradio.com/ClassicFMMP3"}
+  {"name":"Classic FM","url":"http://media-ice.musicradio.com/ClassicFMMP3"},
+  {"name":"60sRadio (MRG.fm)","url":"http://str3.openstream.co/1823"},
+  {"name":"RPR1. Heavy Metal","url":"http://stream.rpr1.de/metal/mp3-128/"},
+  {"name":"80s","url":"http://stream.laut.fm/80s"},
+  {"name":"delta radio Hard Rock & Heavy Metal","url":"http://streams.deltaradio.de/delta-foehnfrisur/mp3-192/"},
+  {"name":"Radio Joyful","url":"http://stream.laut.fm/radiojoyfuljoyful"}
 ]

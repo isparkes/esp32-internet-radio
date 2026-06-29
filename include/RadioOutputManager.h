@@ -5,6 +5,7 @@
 #include <AudioFileSource.h>
 #include <AudioFileSourceBuffer.h>
 #include <AudioFileSourceICYStream.h>
+#include "AudioFileSourceICYStreamSecure.h"
 #include <AudioGeneratorTalkie.h>
 #include <AudioGeneratorMP3.h>
 #include <AudioOutputI2S.h>
@@ -71,9 +72,11 @@ class RadioOutputManager_ {
         strncpy(_songTitle, title, sizeof(_songTitle) - 1);
         _songTitle[sizeof(_songTitle) - 1] = '\0';
       }
+      uint32_t getStreamsPlayed() const { return _streamsPlayed; }
+      uint32_t getFramesDecoded() const { return _framesDecoded; }
 
     private:
-      AudioFileSourceICYStream *file = nullptr;
+      AudioFileSource *file = nullptr;
       AudioFileSourceBuffer *buff = nullptr;
       AudioGeneratorMP3 *mp3 = nullptr;
       AudioOutput *out = nullptr;
@@ -92,6 +95,8 @@ class RadioOutputManager_ {
       bool audioInlineMode = false;             // true when running decoder in main loop (no task)
       AudioMode currentAudioMode = AUDIO_MODE_RADIO;
       bool btPlayPending = false;  // true while waiting for BT source to connect
+      uint32_t _streamsPlayed = 0;
+      volatile uint32_t _framesDecoded = 0;
       volatile bool streamFailed = false;  // set by audio task when mp3->loop() returns false unexpectedly
       bool reconnecting = false;           // true while waiting to retry after a stream failure
       unsigned long reconnectAt = 0;       // millis() timestamp to attempt reconnect

@@ -181,6 +181,9 @@
    StatusInputCallback statusInputCallback = NULL;
   StatusEncoderCallback statusEncoderCallback = NULL;
 
+   // Splash state
+   bool splashShown = false;
+
    // Flash message state
    char flashMessage[64];
    unsigned long flashMessageStart = 0;
@@ -213,7 +216,7 @@
    ~MenuSystem();
    
    // Initialization
-   void showSplash(uint8_t sdaPin, uint8_t sclPin, unsigned long durationMs = 2000);
+   void showSplash(uint8_t sdaPin, uint8_t sclPin);
    bool begin(uint8_t sdaPin, uint8_t sclPin,
               uint8_t encClk, uint8_t encDt,
               uint8_t btnConfirm, uint8_t btnBack,

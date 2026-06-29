@@ -17,7 +17,7 @@ void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
 
   #ifdef FEATURE_MENU
-  menuSystem.showSplash(SDAint, SCLint, 2000);
+  menuSystem.showSplash(SDAint, SCLint);
   #endif
 
   #ifdef DEBUG
