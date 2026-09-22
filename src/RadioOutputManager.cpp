@@ -5,7 +5,6 @@
 #include "RadioMenuConfiguration.h"
 #include "Globals.h"
 #include <WiFi.h>
-#include <driver/i2s.h>
 
 // ************************************************************
 // Custom AudioOutput that routes decoded PCM into the BT PCM ring buffer.
@@ -51,7 +50,6 @@ void RadioOutputManager_::playStartupJingle() {
 
   delete mp3Jingle;
   delete src;
-  i2s_driver_uninstall(I2S_NUM_0);
   delete jingleOut;
 }
 
@@ -215,15 +213,7 @@ void RadioOutputManager_::StopPlaying() {
     file = NULL;
   }
   if (out) {
-#ifdef FEATURE_BLUETOOTH
-    if (currentAudioMode != AUDIO_MODE_RADIO_BLUETOOTH) {
-#endif
-      // mp3->stop() sets i2sOn=false so the destructor won't uninstall the driver.
-      // Uninstall explicitly to free the I2S port.
-      i2s_driver_uninstall(I2S_NUM_0);
-#ifdef FEATURE_BLUETOOTH
-    }
-#endif
+    // mp3->stop() above already called out->stop(), which uninstalls the I2S driver.
     delete out;
     out = NULL;
   }
