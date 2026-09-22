@@ -39,7 +39,7 @@ void RadioOutputManager_::playStartupJingle() {
     return;
   }
 
-  AudioOutputI2S *jingleOut = new AudioOutputI2S();
+  AudioOutputI2S *jingleOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
   jingleOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
   jingleOut->SetGain(DEFAULT_GAIN);
 
@@ -147,7 +147,7 @@ void RadioOutputManager_::StartPlaying() {
   } else
 #endif
   {
-    AudioOutputI2S *i2sOut = new AudioOutputI2S();
+    AudioOutputI2S *i2sOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
     i2sOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
     out = i2sOut;
   }
