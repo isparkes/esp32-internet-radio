@@ -33,11 +33,4 @@
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
-// Audio Modes
-enum AudioMode {
-  AUDIO_MODE_RADIO,            // WiFi radio → I2S DAC
-  AUDIO_MODE_BLUETOOTH,        // BT phone → I2S DAC (A2DP sink)
-  AUDIO_MODE_RADIO_BLUETOOTH   // WiFi radio → BT speaker (A2DP source)
-};
-
 // ----------------------------------------------------------------

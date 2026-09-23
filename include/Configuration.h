@@ -22,9 +22,6 @@
 
 #define FEATURE_MENU
 
-// Classic Bluetooth A2DP - only available on original ESP32 (not S3/C3)
-// Enable by adding -DFEATURE_BLUETOOTH to build_flags in platformio.ini
-
 // -------------------------------------------------------------------------------
 
 #define MENU_TITLE "INet Radio"

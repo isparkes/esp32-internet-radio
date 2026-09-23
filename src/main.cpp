@@ -7,7 +7,6 @@
 #include "main.h"
 #include "Globals.h"
 #include "utilities.h"
-#include "BluetoothManager.h"
 #include "RadioMenuConfiguration.h"
 
 // ************************************************************
@@ -123,18 +122,11 @@ void setup() {
 
   // The audio task runs on core 1. mp3->loop() can block on network I/O,
   // which would starve the core 1 idle task and trigger its WDT.
-  // Core 0 is left entirely to the BT stack and WiFi.
+  // Core 0 is left entirely to WiFi.
   disableCore1WDT();
 
   radioOutputManager.initializeAudioOutput();
   radioOutputManager.playStartupJingle();
-
-  // -------------------------------------------------------------------------
-
-#ifdef FEATURE_BLUETOOTH
-  debugMsgInr("Initialising Bluetooth");
-  bluetoothManager.initializeBluetooth();
-#endif
 
   // -------------------------------------------------------------------------
 

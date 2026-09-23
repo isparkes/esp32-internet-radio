@@ -6,7 +6,6 @@
 #include "Globals.h"
 #include "DebugManager.h"
 #include "RadioOutputManager.h"
-#include "BluetoothManager.h"
 #include "WiFiManager.h"
 #include "SpiffsStorage.h"
 #include "utilities.h"

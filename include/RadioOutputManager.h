@@ -55,12 +55,6 @@ class RadioOutputManager_ {
       // Volume control (0-100)
       void setVolume(int vol);
 
-      // Audio mode management
-      void setAudioMode(AudioMode mode);
-      AudioMode getAudioMode();
-      bool isRadioMode();
-      bool isBluetoothMode();
-      bool isRadioBtMode();
       String getStationName() { return _stationName; }
       String getUrl() { return _url; }
       const char* getSongTitle() { return _songTitle; }
@@ -93,8 +87,6 @@ class RadioOutputManager_ {
       StackType_t* audioTaskStack = nullptr;    // PSRAM-allocated task stack
       StaticTask_t* audioTaskTCB = nullptr;     // Task control block (DRAM)
       bool audioInlineMode = false;             // true when running decoder in main loop (no task)
-      AudioMode currentAudioMode = AUDIO_MODE_RADIO;
-      bool btPlayPending = false;  // true while waiting for BT source to connect
       uint32_t _streamsPlayed = 0;
       volatile uint32_t _framesDecoded = 0;
       volatile bool streamFailed = false;  // set by audio task when mp3->loop() returns false unexpectedly

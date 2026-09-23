@@ -747,7 +747,6 @@ void getStatusHandler(AsyncWebServerRequest *request) {
 
   root["playing"] = radioOutputManager.isPlaying();
   root["volume"] = volume;
-  root["mode"] = radioOutputManager.isBluetoothMode() ? "bluetooth" : "radio";
 
   root["station"] = radioOutputManager.getStationName();
   root["url"] = radioOutputManager.getUrl();

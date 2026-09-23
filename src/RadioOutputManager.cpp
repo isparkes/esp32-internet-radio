@@ -1,31 +1,9 @@
 #include "RadioOutputManager.h"
 #include <SPIFFS.h>
 #include <AudioFileSourceFS.h>
-#include "BluetoothManager.h"
 #include "RadioMenuConfiguration.h"
 #include "Globals.h"
 #include <WiFi.h>
-
-// ************************************************************
-// Custom AudioOutput that routes decoded PCM into the BT PCM ring buffer.
-// Used when streaming radio to a Bluetooth speaker (A2DP source mode).
-// ************************************************************
-#ifdef FEATURE_BLUETOOTH
-class AudioOutputBTBuffer : public AudioOutput {
-public:
-  bool begin() override { return true; }
-  bool stop() override { return true; }
-  bool ConsumeSample(int16_t sample[2]) override {
-    // Apply gain (same fixed-point scheme as AudioOutputI2S)
-    int16_t left  = (int32_t(sample[0]) * gainF2P6) >> 6;
-    int16_t right = (int32_t(sample[1]) * gainF2P6) >> 6;
-    // Return false when the ring buffer is full so the MP3 generator pauses.
-    // This throttles the decoder to real-time speed and prevents the HTTP
-    // download buffer from being drained faster than WiFi can refill it.
-    return BluetoothManager_::writePcmFrame(left, right);
-  }
-};
-#endif
 
 // ************************************************************
 // Play a short startup jingle via I2S
@@ -93,8 +71,7 @@ void RadioOutputManager_::startRadioStream(String url, String stationName, float
 // Start playing the stream
 // ************************************************************
 void RadioOutputManager_::StartPlaying() {
-  debugMsgAud("Start play: mode=" + String(currentAudioMode) +
-              " WiFi=" + String(WiFi.status()) +
+  debugMsgAud("Start play: WiFi=" + String(WiFi.status()) +
               " url=" + _url);
   if (_url.length() == 0) {
     debugMsgAud("No URL set - cannot play");
@@ -139,16 +116,9 @@ void RadioOutputManager_::StartPlaying() {
   buff = new AudioFileSourceBuffer(file, audioBuffer, audioBufferSize);
   buff->RegisterStatusCB(StatusCallback, (void*)"buffer");
 
-#ifdef FEATURE_BLUETOOTH
-  if (currentAudioMode == AUDIO_MODE_RADIO_BLUETOOTH) {
-    out = new AudioOutputBTBuffer();
-  } else
-#endif
-  {
-    AudioOutputI2S *i2sOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
-    i2sOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-    out = i2sOut;
-  }
+  AudioOutputI2S *i2sOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
+  i2sOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  out = i2sOut;
   out->SetGain(_fgain);
   mp3 = new AudioGeneratorMP3();
   mp3->RegisterStatusCB(StatusCallback, (void*)"mp3");
@@ -160,9 +130,9 @@ void RadioOutputManager_::StartPlaying() {
 
   debugMsgAud("Free heap before task create: " + String(ESP.getFreeHeap()) + " bytes");
 
-  // Try to run the decoder as a pinned task. When BT A2DP source is active it
-  // consumes most of the internal DRAM heap, leaving too little for a task stack.
-  // In that case fall back to calling mp3->loop() inline from audioOncePerLoop().
+  // Try to run the decoder as a pinned task. If the task stack can't be
+  // allocated (e.g. under heap pressure), fall back to calling mp3->loop()
+  // inline from audioOncePerLoop().
   audioInlineMode = false;
   BaseType_t taskResult = xTaskCreatePinnedToCore(audioTask, "audio", 4096, this, 3, &audioTaskHandle, 1);
   if (taskResult != pdPASS) {
@@ -222,24 +192,17 @@ void RadioOutputManager_::StopPlaying() {
     audioBuffer = NULL;
   }
 
-  btPlayPending = false;
   playing = false;
 }
 
 // ************************************************************
-// Set volume (0-100) - applies to current audio mode
+// Set volume (0-100)
 // ************************************************************
 void RadioOutputManager_::setVolume(int vol) {
   _fgain = (vol / 100.0f) * MAX_GAIN;
-  if ((currentAudioMode == AUDIO_MODE_RADIO || currentAudioMode == AUDIO_MODE_RADIO_BLUETOOTH) && out) {
+  if (out) {
     out->SetGain(_fgain);
   }
-#ifdef FEATURE_BLUETOOTH
-  else if (currentAudioMode == AUDIO_MODE_BLUETOOTH) {
-    // A2DP volume is 0-127
-    bluetoothManager.setVolume((uint8_t)(vol * 127 / 100));
-  }
-#endif
 }
 
 // ************************************************************
@@ -260,7 +223,7 @@ void RadioOutputManager_::audioOncePerHour() {
 // 
 // ************************************************************
 void RadioOutputManager_::audioOncePerLoop() {
-  // Run the decoder inline when no task could be created (e.g. DRAM exhausted by BT).
+  // Run the decoder inline when no task could be created.
   // Core 1 WDT is disabled so brief blocking on network I/O is safe.
   if (audioInlineMode && playing && mp3) {
     if (mp3->loop()) {
@@ -297,24 +260,6 @@ void RadioOutputManager_::audioOncePerLoop() {
       StartPlaying();
     }
   }
-
-#ifdef FEATURE_BLUETOOTH
-  if (btPlayPending) {
-    static unsigned long lastBtLog = 0;
-    if (millis() - lastBtLog > 3000) {
-      lastBtLog = millis();
-      debugMsgAud("BT wait: connected=" + String(bluetoothManager.isBluetoothSourceConnected()) +
-                  " cbFired=" + String(bluetoothManager.isBluetoothSourceAudioStarted()) +
-                  " WiFi=" + String(WiFi.status()));
-    }
-
-    if (bluetoothManager.isBluetoothSourceAudioStarted()) {
-      btPlayPending = false;
-      menuSystem.showFlashMessage("BT ready - streaming");
-      StartPlaying();
-    }
-  }
-#endif
 }
 
 // ************************************************************
@@ -370,80 +315,6 @@ void RadioOutputManager_::stopRadioStream() {
   debugManagerLink("RadioOutputManager: Stopping radio stream");
   StopPlaying();
 }
-
-// ************************************************************
-// Set audio mode (Radio or Bluetooth)
-// ************************************************************
-void RadioOutputManager_::setAudioMode(AudioMode mode) {
-  debugManagerLink("RadioOutputManager: Setting audio mode to " + String(mode));
-
-#ifndef FEATURE_BLUETOOTH
-  if (mode == AUDIO_MODE_BLUETOOTH || mode == AUDIO_MODE_RADIO_BLUETOOTH) {
-    debugManagerLink("Bluetooth not supported on this platform");
-    return;
-  }
-#endif
-
-  if (currentAudioMode == mode) return;
-
-  // Stop whatever is currently running
-  if (currentAudioMode == AUDIO_MODE_RADIO) {
-    StopPlaying();
-  }
-#ifdef FEATURE_BLUETOOTH
-  else if (currentAudioMode == AUDIO_MODE_BLUETOOTH) {
-    bluetoothManager.stopBluetooth();
-  } else if (currentAudioMode == AUDIO_MODE_RADIO_BLUETOOTH) {
-    StopPlaying();
-    bluetoothManager.stopBluetoothSource();
-  }
-#endif
-
-  currentAudioMode = mode;
-
-  // Start the new mode
-#ifdef FEATURE_BLUETOOTH
-  if (mode == AUDIO_MODE_BLUETOOTH) {
-    bluetoothManager.startBluetooth();
-  } else if (mode == AUDIO_MODE_RADIO_BLUETOOTH) {
-    // Start BT scanning first. WiFi streaming starts only once BT has connected,
-    // because ESP32 shares one radio and active WiFi blocks BT inquiry scans.
-    bluetoothManager.startBluetoothSource("XTREME");
-    btPlayPending = true;
-    menuSystem.showFlashMessage("Scanning for XTREME...");
-  }
-#endif
-}
-
-// ************************************************************
-// Get current audio mode
-// ************************************************************
-AudioMode RadioOutputManager_::getAudioMode() {
-  return currentAudioMode;
-}
-
-// ************************************************************
-// Check if in Radio mode
-// ************************************************************
-bool RadioOutputManager_::isRadioMode() {
-  return currentAudioMode == AUDIO_MODE_RADIO;
-}
-
-// ************************************************************
-// Check if in Bluetooth sink mode
-// ************************************************************
-bool RadioOutputManager_::isBluetoothMode() {
-  return currentAudioMode == AUDIO_MODE_BLUETOOTH;
-}
-
-// ************************************************************
-// Check if in Radio→BT source mode
-// ************************************************************
-bool RadioOutputManager_::isRadioBtMode() {
-  return currentAudioMode == AUDIO_MODE_RADIO_BLUETOOTH;
-}
-
-
 
 // ************************************************************
 // Library internal singleton wiring

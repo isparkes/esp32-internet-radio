@@ -56,23 +56,6 @@ void stopPlaying() {
   buildAudioMenuDynamic();
 }
 
-#ifdef FEATURE_BLUETOOTH
-void switchToBluetoothMode() {
-  radioOutputManager.setAudioMode(AUDIO_MODE_BLUETOOTH);
-  buildAudioMenuDynamic();
-}
-
-void switchToRadioBtMode() {
-  radioOutputManager.setAudioMode(AUDIO_MODE_RADIO_BLUETOOTH);
-  buildAudioMenuDynamic();
-}
-
-void switchToRadioMode() {
-  radioOutputManager.setAudioMode(AUDIO_MODE_RADIO);
-  buildAudioMenuDynamic();
-}
-#endif
-
 // ************************************************************
 // WiFi scan network selection callbacks
 // ************************************************************
@@ -178,7 +161,7 @@ void resetWiFiInfoCb() {
 }
 
 // ************************************************************
-// Build the Audio menu (dynamic based on mode)
+// Build the Audio menu (station list + stop)
 // ************************************************************
 void buildAudioMenuDynamic() {
   if (!audioMenu) return;
@@ -186,49 +169,15 @@ void buildAudioMenuDynamic() {
   // Clear existing items and repopulate
   menuSystem.clearMenuItems(audioMenu);
 
-  if (radioOutputManager.isRadioMode()) {
-    menuSystem.addInfo(audioMenu, "Mode: Radio");
-    int count = spiffsStorage.getStationCount();
-    for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
-      String name, url;
-      spiffsStorage.getStation(i, name, url);
-      strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
-      stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
-      menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
-    }
-    menuSystem.addAction(audioMenu, "Stop", stopPlaying);
-#ifdef FEATURE_BLUETOOTH
-    menuSystem.addAction(audioMenu, "Switch to BT Sink", switchToBluetoothMode);
-    menuSystem.addAction(audioMenu, "Radio to BT Spkr", switchToRadioBtMode);
-#endif
+  int count = spiffsStorage.getStationCount();
+  for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
+    String name, url;
+    spiffsStorage.getStation(i, name, url);
+    strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
+    stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
+    menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
   }
-#ifdef FEATURE_BLUETOOTH
-  else if (radioOutputManager.isRadioBtMode()) {
-    menuSystem.addInfo(audioMenu, "Mode: Radio->BT");
-    if (radioOutputManager.isPlaying()) {
-      menuSystem.addInfo(audioMenu, "Status: Streaming");
-    } else {
-      menuSystem.addInfo(audioMenu, "Status: Connecting");
-    }
-    int count = spiffsStorage.getStationCount();
-    for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
-      String name, url;
-      spiffsStorage.getStation(i, name, url);
-      strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
-      stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
-      menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
-    }
-    menuSystem.addAction(audioMenu, "Switch to Radio", switchToRadioMode);
-  } else {
-    menuSystem.addInfo(audioMenu, "Mode: BT Sink");
-    if (bluetoothManager.isBluetoothConnected()) {
-      menuSystem.addInfo(audioMenu, "Status: Connected");
-    } else {
-      menuSystem.addInfo(audioMenu, "Status: Waiting...");
-    }
-    menuSystem.addAction(audioMenu, "Switch to Radio", switchToRadioMode);
-  }
-#endif
+  menuSystem.addAction(audioMenu, "Stop", stopPlaying);
 
   menuSystem.navigateToMenu(audioMenu);
 }
@@ -305,8 +254,7 @@ void buildRadioMenus() {
 
   // Build submenus
   audioMenu = menuSystem.createMenu("Audio");
-  if (radioOutputManager.isRadioMode()) {
-    menuSystem.addInfo(audioMenu, "Mode: Radio");
+  {
     int count = spiffsStorage.getStationCount();
     for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
       String name, url;
@@ -316,13 +264,6 @@ void buildRadioMenus() {
       menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
     }
     menuSystem.addAction(audioMenu, "Stop", stopPlaying);
-#ifdef FEATURE_BLUETOOTH
-    menuSystem.addAction(audioMenu, "Switch to BT", switchToBluetoothMode);
-  } else {
-    menuSystem.addInfo(audioMenu, "Mode: Bluetooth");
-    menuSystem.addInfo(audioMenu, "Status: Waiting...");
-    menuSystem.addAction(audioMenu, "Switch to Radio", switchToRadioMode);
-#endif
   }
 
   wifiMenu = menuSystem.createMenu("WiFi");
@@ -380,27 +321,6 @@ static void drawResyncIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint
   display->drawCircle(cx, cy, r, SH110X_WHITE);
   display->fillTriangle(cx + r - 2, cy - r, cx + r + 3, cy - r, cx + r, cy - r + 4, SH110X_WHITE);
 }
-
-#ifdef FEATURE_BLUETOOTH
-static void drawConnectingIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
-  display->fillTriangle(x, y, x + w - 1, y, x + w / 2, y + h / 2 - 1, SH110X_WHITE);
-  display->fillTriangle(x, y + h - 1, x + w - 1, y + h - 1, x + w / 2, y + h / 2 + 1, SH110X_WHITE);
-}
-
-static void drawConnectedIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
-  display->drawLine(x, y + h * 2 / 3, x + w / 3, y + h - 1, SH110X_WHITE);
-  display->drawLine(x + w / 3, y + h - 1, x + w - 1, y + h / 4, SH110X_WHITE);
-}
-
-static void drawBluetoothIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
-  uint8_t cx = x + w / 2;
-  display->drawLine(cx, y,            cx,         y + h - 1,      SH110X_WHITE);
-  display->drawLine(cx, y,            x + w - 1,  y + h / 4,      SH110X_WHITE);
-  display->drawLine(x + w - 1, y + h / 4,  cx,   y + h / 2,      SH110X_WHITE);
-  display->drawLine(cx, y + h / 2,    x + w - 1,  y + h * 3 / 4, SH110X_WHITE);
-  display->drawLine(x + w - 1, y + h * 3 / 4, cx, y + h - 1,     SH110X_WHITE);
-}
-#endif
 
 // Timestamp (millis) until which the geek-info overlay should be shown.
 static unsigned long geekInfoUntil = 0;
@@ -470,46 +390,19 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
   const uint8_t iconY    = contentY + (rowH * 2 + barH - iconH) / 2;
 
   // Row 1: status text (indented); icon centred vertically beside all 3 rows
-  if (radioOutputManager.isRadioMode()) {
-    if (radioOutputManager.isPlaying()) {
-      drawPlayIcon(display, iconX, iconY, iconW, iconH);
-      display->setCursor(indent, contentY + 1);
-      display->print("Playing");
-    } else if (radioOutputManager.isReconnecting()) {
-      drawResyncIcon(display, iconX, iconY, iconW, iconH);
-      display->setCursor(indent, contentY + 1);
-      display->print("Resyncing");
-    } else {
-      drawStopIcon(display, iconX, iconY, iconW, iconH);
-      display->setCursor(indent, contentY + 1);
-      display->print("Stopped");
-    }
-  }
-#ifdef FEATURE_BLUETOOTH
-  else if (radioOutputManager.isRadioBtMode()) {
-    if (radioOutputManager.isPlaying()) {
-      drawPlayIcon(display, iconX, iconY, iconW, iconH);
-      display->setCursor(indent, contentY + 1);
-      display->print("Radio>BT");
-    } else if (radioOutputManager.isReconnecting()) {
-      drawResyncIcon(display, iconX, iconY, iconW, iconH);
-      display->setCursor(indent, contentY + 1);
-      display->print("Resyncing");
-    } else if (bluetoothManager.isBluetoothSourceConnected()) {
-      drawConnectedIcon(display, iconX, iconY, iconW, iconH);
-      display->setCursor(indent, contentY + 1);
-      display->print("BT ready");
-    } else {
-      drawConnectingIcon(display, iconX, iconY, iconW, iconH);
-      display->setCursor(indent, contentY + 1);
-      display->print("Connecting");
-    }
-  } else {
-    drawBluetoothIcon(display, iconX, iconY, iconW, iconH);
+  if (radioOutputManager.isPlaying()) {
+    drawPlayIcon(display, iconX, iconY, iconW, iconH);
     display->setCursor(indent, contentY + 1);
-    display->print(bluetoothManager.isBluetoothConnected() ? "BT Sink" : "BT: Wait");
+    display->print("Playing");
+  } else if (radioOutputManager.isReconnecting()) {
+    drawResyncIcon(display, iconX, iconY, iconW, iconH);
+    display->setCursor(indent, contentY + 1);
+    display->print("Resyncing");
+  } else {
+    drawStopIcon(display, iconX, iconY, iconW, iconH);
+    display->setCursor(indent, contentY + 1);
+    display->print("Stopped");
   }
-#endif
 
   // Shared bar geometry — 90% of available width, right-aligned
   const uint8_t labelW = 6 * 6;                              // "Volume"/"Buffer" = 36 px

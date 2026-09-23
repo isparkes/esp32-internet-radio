@@ -2,7 +2,7 @@
 
 ## Overview
 
-ESP32-based internet radio that streams MP3 audio over WiFi to an I2S DAC. Supports Bluetooth A2DP sink mode as an alternative audio source. User interaction via a 128x64 OLED display with rotary encoder and buttons. Remote control via a web interface.
+ESP32-based internet radio that streams MP3 audio over WiFi to an I2S DAC. User interaction via a 128x64 OLED display with rotary encoder and buttons. Remote control via a web interface.
 
 Software version: `INR-ESP32 1.0.0.0`
 
@@ -43,19 +43,10 @@ Single factory app partition (no OTA). OTA was removed to maximize app space.
 
 The MP3 decode loop runs on a dedicated FreeRTOS task pinned to **core 0** at priority 3 with a 4096-byte stack. This isolates audio from display/WiFi processing on core 1.
 
-When stopping radio playback, `i2s_driver_uninstall(I2S_NUM_0)` is called explicitly because the ESP8266Audio library's `AudioOutputI2S::stop()` does not release the I2S driver.
-
-### Bluetooth Mode
-
-Uses the ESP32-A2DP library to act as a Bluetooth A2DP sink. The device advertises as "InternetRadio" and accepts connections from phones/tablets.
-
-WiFi and Bluetooth Classic share the 2.4 GHz radio on ESP32. When switching to Bluetooth mode, WiFi is disconnected (`WiFi.disconnect(true)`). When switching back to radio mode, WiFi reconnects automatically.
-
 ### Volume Control
 
 - Integer range: 0–100 (stored in global `volume`)
-- Radio mode: mapped to float gain 0.0–1.2 (`MAX_GAIN`) via `AudioOutputI2S::SetGain()`
-- Bluetooth mode: mapped to 0–127 via A2DP volume control
+- Mapped to float gain 0.0–1.2 (`MAX_GAIN`) via `AudioOutputI2S::SetGain()`
 - Adjustable via rotary encoder on status screen or web interface
 
 ### I2S Configuration
@@ -91,10 +82,8 @@ Connected to a PCM5102 DAC module.
 Status Screen (default)
   └─ [Encoder click] → Main Menu
       ├─ Audio
-      │   ├─ Mode: Radio/Bluetooth (info)
       │   ├─ Station 1..N (play)
-      │   ├─ Stop
-      │   └─ Switch to BT / Switch to Radio
+      │   └─ Stop
       ├─ WiFi
       │   ├─ Disconnect WiFi (when connected)
       │   ├─ Reconnect Prev (when credentials stored)
@@ -114,7 +103,7 @@ Status Screen (default)
 
 The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second system-info overlay (IP, heap, streams played, frames decoded).
 
-Menus are rebuilt dynamically when state changes (e.g., WiFi connects/disconnects, mode switches).
+Menus are rebuilt dynamically when state changes (e.g., WiFi connects/disconnects).
 
 ## WiFi Management
 
@@ -162,7 +151,7 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 | `/api/stations` | GET | — | `[ { name, url }, ... ]` |
 | `/api/stations` | POST | `{ name, url }` | — (saves to SPIFFS) |
 | `/api/stations/delete` | POST | `{ index }` | — (saves to SPIFFS) |
-| `/api/status` | GET | — | `{ playing, station, url, volume, mode }` |
+| `/api/status` | GET | — | `{ playing, station, url, volume }` |
 | `/api/play` | POST | `{ index }` | — |
 | `/api/stop` | POST | — | — |
 | `/api/volume` | POST | `{ volume: 0-100 }` | — |
@@ -245,7 +234,6 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 
 ## Known Constraints
 
-- WiFi and Bluetooth Classic cannot operate simultaneously on ESP32; switching modes disconnects the other
 - Web page polling (auto-refresh) causes audio breakup due to WiFi bandwidth contention; web pages use one-time data fetch only
 - No OTA update support (removed to fit in flash); firmware updates require USB
 - ArduinoJson v5 (not v6/v7) due to existing codebase patterns
