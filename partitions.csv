@@ -1,8 +1,9 @@
 # Name,   Type, SubType, Offset,  Size, Flags
-# OTA - two app partitions for OTA updates
+# OTA - two app partitions for OTA updates. Scaled up for 16MB flash
+# (was a 4MB layout on the original ESP32-WROVER board).
 nvs,      data, nvs,     0x9000,  0x5000,
 otadata,  data, ota,     0xe000,  0x2000,
-app0,     app,  ota_0,   0x10000, 0x180000,
-app1,     app,  ota_1,   0x190000,0x180000,
-spiffs,   data, spiffs,  0x310000,0xE0000,
-coredump, data, coredump,0x3F0000,0x10000,
+app0,     app,  ota_0,   0x10000, 0x300000,
+app1,     app,  ota_1,   0x310000,0x300000,
+spiffs,   data, spiffs,  0x610000,0x200000,
+coredump, data, coredump,0x810000,0x10000,

@@ -13,20 +13,23 @@
 #define LED_PIN 2
 
 // Menu system pin names (for clarity in menu code)
-#define PIN_ENC_CLK     26
+// GPIO26-37 are reserved on this board (SPI flash + octal PSRAM) - avoid them.
+#define PIN_ENC_CLK     5
 #define PIN_ENC_DT      14
-#define PIN_ENC_SW      27
+#define PIN_ENC_SW      6
 #define PIN_BTN_CONFIRM 13
 #define PIN_BTN_BACK    4
 
 // I2S Pins
-#define I2S_BCLK   33   // "BCK" 
-#define I2S_LRC    23   // "LRCK" or "WS"
-#define I2S_DOUT   25   // "DIN"
+#define I2S_BCLK   15   // "BCK"
+#define I2S_LRC    16   // "LRCK" or "WS"
+#define I2S_DOUT   17   // "DIN"
 
 // Internally defined - so we don't reaassign them here
+// GPIO22-25 do not physically exist on ESP32-S3 (SOC_GPIO_VALID_GPIO_MASK
+// excludes them) - SCLint, the old I2S_LRC (23) and I2S_DOUT (25) all moved.
 #define SDAint    21
-#define SCLint    22
+#define SCLint    8
 #define RX0Pin    3
 #define TX0Pin    1
 

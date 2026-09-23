@@ -11,7 +11,7 @@
 #define SOFTWARE_VERSION "INR-ESP32 1.0.0.0"
 
 // Add debug statments to code - needs extra space
-#define DEBUG_OFF                   // DEBUG | DEBUG_OFF
+#define DEBUG                       // DEBUG | DEBUG_OFF -- TEMP: enabled for boot-log verification
 
 // -------------------------------------------------------------------------------
 
