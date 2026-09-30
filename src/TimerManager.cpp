@@ -18,15 +18,15 @@ volatile uint8_t _dispBoardCount = 3;
 
 // ************************************************************
 // ISR for LED flash update
+// No physical status LED on the ESP32-A1S build (its onboard LED pin,
+// GPIO22, is used as PIN_BTN_BACK instead) - the counter still runs so
+// setLedFlashType() stays a valid no-op call site, but nothing is wired.
 // ************************************************************
 void IRAM_ATTR onTimer0() {
    portENTER_CRITICAL_ISR(&timerMux0);
    count0++;
    if (count0 > count0Max) {
      count0 = 0;
-     digitalWrite(LED_PIN, HIGH);
-   } else if (count0 == count0Off) {
-     digitalWrite(LED_PIN, LOW);
    }
    portEXIT_CRITICAL_ISR(&timerMux0);
 }
@@ -35,8 +35,6 @@ void IRAM_ATTR onTimer0() {
 // Start the timers
 // ************************************************************
 void startTimers() {
-  pinMode(LED_PIN, OUTPUT);
-
   // LED flash timer
   timer0 = timerBegin(0, 80, true);
   timerAttachInterrupt(timer0, &onTimer0, true);

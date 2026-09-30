@@ -9,6 +9,8 @@
 #include <AudioGeneratorTalkie.h>
 #include <AudioGeneratorMP3.h>
 #include <AudioOutputI2S.h>
+#include <Wire.h>
+#include "ES8388Codec.h"
 
 #include "Defs.h"
 #include "DebugManager.h"
@@ -76,6 +78,11 @@ class RadioOutputManager_ {
       AudioOutput *out = nullptr;
       uint8_t *audioBuffer = nullptr;
       size_t audioBufferSize = 0;
+
+      // ES8388 codec on a dedicated I2C peripheral - physically separate bus
+      // from the OLED's (default Wire), see CODEC_SDA/CODEC_SCL in Defs.h.
+      TwoWire codecWire = TwoWire(1);
+      ES8388Codec codec;
 
       float _fgain = DEFAULT_GAIN;
       String _url = "";

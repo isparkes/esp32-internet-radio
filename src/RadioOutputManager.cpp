@@ -4,6 +4,7 @@
 #include "RadioMenuConfiguration.h"
 #include "Globals.h"
 #include <WiFi.h>
+#include "I2SBlockingOutput.h"
 
 // ************************************************************
 // Play a short startup jingle via I2S
@@ -16,8 +17,8 @@ void RadioOutputManager_::playStartupJingle() {
     return;
   }
 
-  AudioOutputI2S *jingleOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
-  jingleOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  I2SBlockingOutput *jingleOut = new I2SBlockingOutput(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
+  jingleOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT, I2S_MCLK);
   jingleOut->SetGain(DEFAULT_GAIN);
 
   AudioGeneratorMP3 *mp3Jingle = new AudioGeneratorMP3();
@@ -36,6 +37,15 @@ void RadioOutputManager_::playStartupJingle() {
 // ************************************************************
 void RadioOutputManager_::initializeAudioOutput() {
   debugManagerLink("RadioOutputManager: Initializing audio output");
+
+  // Power up the onboard speaker amplifier - without this the ES8388 can be
+  // fully configured and playing and there will still be no audio output.
+  pinMode(PA_ENABLE_PIN, OUTPUT);
+  digitalWrite(PA_ENABLE_PIN, HIGH);
+
+  if (!codec.begin(codecWire, CODEC_SDA, CODEC_SCL)) {
+    debugManagerLink("RadioOutputManager: ES8388 codec not responding on I2C!");
+  }
 
   // Set default station — reads first entry from stations.json
   String name, url;
@@ -116,8 +126,8 @@ void RadioOutputManager_::StartPlaying() {
   buff = new AudioFileSourceBuffer(file, audioBuffer, audioBufferSize);
   buff->RegisterStatusCB(StatusCallback, (void*)"buffer");
 
-  AudioOutputI2S *i2sOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
-  i2sOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  I2SBlockingOutput *i2sOut = new I2SBlockingOutput(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
+  i2sOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT, I2S_MCLK);
   out = i2sOut;
   out->SetGain(_fgain);
   mp3 = new AudioGeneratorMP3();
