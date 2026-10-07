@@ -206,9 +206,11 @@ void RadioOutputManager_::setVolume(int vol) {
 }
 
 // ************************************************************
-//
+// Report the streaming buffer fill level once per second
 // ************************************************************
 void RadioOutputManager_::audioOncePerSecond() {
+  // buff only exists while a stream is set up.
+  if (!buff) return;
   debugMsgAud("Buffer " + String(buff->getFillLevel()) + "/" + String(audioBufferSize));
 }
 
