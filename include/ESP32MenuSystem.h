@@ -113,6 +113,16 @@
    Adafruit_SH1106G* display;
    uint8_t screenWidth;
    uint8_t screenHeight;
+
+   // Shadow copy of the last frame actually sent to the panel. update() renders
+   // every loop, but the I2C transfer is skipped unless the pixels changed -
+   // continuous I2C traffic couples audible interference into the I2S audio.
+   uint8_t* lastFrame;
+   size_t   lastFrameSize;
+
+   // Send the rendered frame buffer to the panel only if it differs from the
+   // last one sent. Returns true if a transfer took place.
+   bool pushIfChanged();
    
    // Input pins
    uint8_t encoderClkPin;

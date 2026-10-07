@@ -18,7 +18,8 @@ MenuSystem::MenuSystem(uint8_t width, uint8_t height, int8_t resetPin)
       currentMode(MODE_STATUS_SCREEN), encoderPosition(0), lastEncoderTime(0),
       lastEncoderState(0), encoderPulseCount(0), confirmPressed(false), backPressed(false),
       encoderSwPressed(false), screenSaverTimeout(0), lastActivityTime(0),
-      screenSaverActive(false), lastMenuActivity(0), statusData(NULL)
+      screenSaverActive(false), lastMenuActivity(0), statusData(NULL),
+      lastFrame(NULL), lastFrameSize(0)
 {
 
   display = new Adafruit_SH1106G(width, height, &Wire, resetPin);
@@ -31,6 +32,11 @@ MenuSystem::~MenuSystem()
   if (display)
   {
     delete display;
+  }
+  if (lastFrame)
+  {
+    free(lastFrame);
+    lastFrame = NULL;
   }
   if (tempEditItem)
   {
@@ -595,6 +601,50 @@ void MenuSystem::exitCurrentMode()
   lastEncoderPos = 0;
 }
 
+// ************************************************************
+// Push the rendered frame to the panel only if it changed
+//
+// update() re-renders on every main loop iteration, and clearDisplay() marks
+// the whole panel dirty, so an unconditional display() pushes a full 1KB frame
+// over I2C every pass. That constant traffic is audible in the I2S output, so
+// compare against a shadow copy of the last frame and stay off the bus when
+// nothing moved. Returns true if a transfer took place.
+// ************************************************************
+bool MenuSystem::pushIfChanged()
+{
+  uint8_t *frame = display->getBuffer();
+  size_t   size  = (size_t)screenWidth * ((screenHeight + 7) / 8);
+
+  if (!frame)
+  {
+    // No accessible buffer - fall back to pushing unconditionally.
+    display->display();
+    return true;
+  }
+
+  // First frame, or the buffer geometry changed: allocate and force a push.
+  if (!lastFrame || lastFrameSize != size)
+  {
+    uint8_t *shadow = (uint8_t *)realloc(lastFrame, size);
+    if (!shadow)
+    {
+      // Can't track changes without the shadow - push every frame instead.
+      display->display();
+      return true;
+    }
+    lastFrame     = shadow;
+    lastFrameSize = size;
+  }
+  else if (memcmp(lastFrame, frame, size) == 0)
+  {
+    return false; // Nothing moved - leave the bus alone.
+  }
+
+  memcpy(lastFrame, frame, size);
+  display->display();
+  return true;
+}
+
 // Main update loop
 void MenuSystem::update()
 {
@@ -608,7 +658,7 @@ void MenuSystem::update()
     {
       screenSaverActive = true;
       display->clearDisplay();
-      display->display();
+      pushIfChanged();
       debugMsgMnm("[SCREEN] Screen saver activated");
       return; // Don't process anything while screen saver is active
     }
@@ -624,7 +674,7 @@ void MenuSystem::update()
     // Render flash message but skip input processing
     display->clearDisplay();
     renderFlashMessage();
-    display->display();
+    pushIfChanged();
     return;
   }
 
@@ -938,7 +988,7 @@ void MenuSystem::update()
     break;
   }
 
-  display->display();
+  pushIfChanged();
 }
 
 // Render menu navigation
