@@ -24,6 +24,49 @@ class I2SBlockingOutput : public AudioOutputI2S {
   public:
     using AudioOutputI2S::AudioOutputI2S;
 
+    // Second fix, for white noise on this board: ESP8266Audio 2.2.0's
+    // begin() builds its i2s_config_t with
+    //     .fixed_mclk = use_mclk, // Unused
+    // but fixed_mclk is NOT unused and is not a flag - the IDF reads it as
+    // an MCLK frequency in Hz ("If use_apll = true and fixed_mclk > 0, then
+    // the clock output for i2s is fixed and equal to the fixed_mclk value.
+    // If fixed_mclk set, mclk_multiple won't take effect" - driver/i2s.h).
+    // SetPinout(bclk, wclk, dout, mclk) sets use_mclk = true, so simply
+    // asking for an MCLK pin writes fixed_mclk = 1, i.e. "MCLK = 1 Hz", and
+    // the ES8388 is fed a clock it cannot possibly lock to. The ES8388 needs
+    // a real MCLK here (DACCONTROL2 = 0x02 selects MCLK = 256 * fs), so the
+    // pin cannot just be dropped.
+    //
+    // Install the driver ourselves instead, with the values proven on the
+    // AudioKit V2.2 tone test: no APLL, fixed_mclk 0, MCLK = 256 * fs.
+    // Everything else (pin routing, rate changes, teardown) stays with the
+    // base class. begin() is the virtual entry point AudioGenerator calls.
+    bool begin() override {
+      if (!i2sOn) {
+        i2s_config_t cfg = {
+          .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+          .sample_rate = 44100,                            // replaced by SetRate() below
+          .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+          .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
+          .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+          .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+          .dma_buf_count = dma_buf_count,
+          .dma_buf_len = 64,
+          .use_apll = false,
+          .tx_desc_auto_clear = true,                      // silence, not noise, on underflow
+          .fixed_mclk = 0,                                 // 0 = derive MCLK from mclk_multiple
+          .mclk_multiple = I2S_MCLK_MULTIPLE_256,
+          .bits_per_chan = I2S_BITS_PER_CHAN_DEFAULT,
+        };
+        if (i2s_driver_install((i2s_port_t)portNo, &cfg, 0, NULL) != ESP_OK) return false;
+        SetPinout();   // routes MCLK to mclkPin, as set by the 4-arg SetPinout()
+        i2s_zero_dma_buffer((i2s_port_t)portNo);
+        i2sOn = true;
+      }
+      SetRate(hertz ? hertz : 44100);
+      return true;
+    }
+
     bool ConsumeSample(int16_t sample[2]) override {
       if (!i2sOn) return false;
 

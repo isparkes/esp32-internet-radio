@@ -47,8 +47,8 @@
 // OLED I2C bus. Repurposes the USB-serial TX0/RX0 pins (GPIO1/3) since no
 // other pins are free - this permanently loses the Serial/debug console
 // during normal operation (re-flashing over USB is unaffected).
-#define SDAint    1
-#define SCLint    3
+#define SDAint    1      // GPIO1 (TX0) - OLED SDA
+#define SCLint    3      // GPIO3 (RX0) - OLED SCL
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels

@@ -38,14 +38,19 @@ void RadioOutputManager_::playStartupJingle() {
 void RadioOutputManager_::initializeAudioOutput() {
   debugManagerLink("RadioOutputManager: Initializing audio output");
 
-  // Power up the onboard speaker amplifier - without this the ES8388 can be
-  // fully configured and playing and there will still be no audio output.
+  // The board pulls PA_ENABLE_PIN down at boot, so hold the amplifier off
+  // until the codec is configured - otherwise the reset/power-up transient
+  // goes straight to the speaker.
   pinMode(PA_ENABLE_PIN, OUTPUT);
-  digitalWrite(PA_ENABLE_PIN, HIGH);
+  digitalWrite(PA_ENABLE_PIN, LOW);
 
   if (!codec.begin(codecWire, CODEC_SDA, CODEC_SCL)) {
     debugManagerLink("RadioOutputManager: ES8388 codec not responding on I2C!");
   }
+
+  // Without this the ES8388 can be fully configured and playing and there
+  // will still be no audio output.
+  digitalWrite(PA_ENABLE_PIN, HIGH);
 
   // Set default station — reads first entry from stations.json
   String name, url;

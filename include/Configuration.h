@@ -11,7 +11,7 @@
 #define SOFTWARE_VERSION "INR-ESP32 1.0.0.0"
 
 // Add debug statments to code - needs extra space
-#define DEBUG                       // DEBUG | DEBUG_OFF -- TEMP: diagnosing white noise on radio playback
+#define DEBUG_OFF                       // DEBUG | DEBUG_OFF -- TEMP: diagnosing white noise on radio playback
 
 // -------------------------------------------------------------------------------
 
@@ -20,7 +20,7 @@
 
 // -------------------------------------------------------------------------------
 
-#define FEATURE_MENU_OFF
+#define FEATURE_MENU
 
 // -------------------------------------------------------------------------------
 
