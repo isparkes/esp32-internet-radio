@@ -654,7 +654,28 @@ void MenuSystem::update()
   if (screenSaverTimeout > 0)
   {
     unsigned long now = millis();
-    if (!screenSaverActive && (now - lastActivityTime) > screenSaverTimeout)
+    if (screenSaverActive)
+    {
+      // Blanked: the only input we act on is the one that wakes the panel.
+      // The wake event is swallowed so the press that lights the screen
+      // doesn't also trigger whatever happened to be under it.
+      bool woken = (encoderPosition != lastEncoderPos);
+      if (checkButtons() != BTN_NONE)
+      {
+        woken = true;
+      }
+
+      if (!woken)
+      {
+        return; // Stay dark and off the I2C bus
+      }
+
+      lastEncoderPos = encoderPosition;
+      resetActivity(); // Clears screenSaverActive
+      resetMenuActivity();
+      // Fall through and render this pass so the panel lights up immediately
+    }
+    else if ((now - lastActivityTime) > screenSaverTimeout)
     {
       screenSaverActive = true;
       display->clearDisplay();

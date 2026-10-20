@@ -30,3 +30,6 @@
 #define VOLUME_STEPS 10                             // Number of volume steps
 #define VOLUME_STEP_SIZE (MAX_GAIN / VOLUME_STEPS)  // Volume step size
 #define DEFAULT_GAIN VOLUME_STEP_SIZE*3             // Default gain on start up
+
+#define DEFAULT_OLED_BLANK_MINS 0                   // OLED blanking timeout, 0 = never blank
+#define MAX_OLED_BLANK_MINS 60                      // Longest selectable blanking timeout

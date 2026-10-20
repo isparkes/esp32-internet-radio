@@ -22,8 +22,6 @@ extern int secsDeltaAbs;
 extern int secsDelta;
 extern bool upOrDown;  
 
-extern bool blanked;  
-
 // ************************************************************
 // Shared config objects
 // ************************************************************

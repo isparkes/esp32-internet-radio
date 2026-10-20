@@ -97,6 +97,7 @@ Status Screen (default)
           ├─ Restart Device
           ├─ Save Config
           ├─ WiFi at Start (ON/OFF toggle)
+          ├─ Blank (0=off) (OLED blanking timeout, minutes)
           ├─ Debug 10m (debug builds only)
           └─ Reset WiFi
 ```
@@ -104,6 +105,15 @@ Status Screen (default)
 The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second system-info overlay (IP, heap, streams played, frames decoded).
 
 Menus are rebuilt dynamically when state changes (e.g., WiFi connects/disconnects).
+
+### Display Blanking
+
+The panel is blanked after `OledBlankMins` minutes without encoder or button
+activity (0 disables blanking). While blanked nothing is rendered and no I2C
+traffic is generated, so the display cannot couple interference into the audio.
+Any encoder movement or button press wakes the panel; that first input is
+swallowed so it only lights the screen rather than also acting on whatever was
+under it. Audio playback is unaffected by blanking.
 
 ## WiFi Management
 
@@ -181,7 +191,7 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 
 ```
 /config/
-  config.json      — WiFi credentials, WifiOnAtStart flag
+  config.json      — WiFi credentials, WifiOnAtStart flag, OledBlankMins
   stats.json       — Uptime counters (uptimeMins, tubeOnTimeMins)
   stations.json    — Radio station list [{ name, url }, ...]
 /web/
@@ -202,6 +212,7 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 
 - `WiFiSSID` / `WiFiPassword` — stored WiFi credentials
 - `WifiOnAtStart` — boolean, auto-connect on boot
+- `OledBlankMins` — OLED blanking timeout in minutes (0 = never blank, max 60, default 0)
 
 ### Statistics (`stats.json`)
 
@@ -231,6 +242,8 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 | `DEBUG` | `DEBUG` / `DEBUG_OFF` | Enable serial debug logging |
 | `FEATURE_MENU` | defined or not | Enable OLED menu system |
 | `MAX_GAIN` | float (default 1.2) | Audio gain ceiling |
+| `DEFAULT_OLED_BLANK_MINS` | int (default 0) | Factory default OLED blanking timeout, 0 = never |
+| `MAX_OLED_BLANK_MINS` | int (default 60) | Longest blanking timeout selectable in the menu |
 
 ## Known Constraints
 

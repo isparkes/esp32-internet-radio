@@ -57,6 +57,7 @@ String secsToReadableString (long secsValue) {
 // ************************************************************
 void resetOptions() {
   cc->WifiOnAtStart = true;
+  cc->oledBlankMins = DEFAULT_OLED_BLANK_MINS;
   cc->WiFiSSID = "";
   cc->WiFiPassword = "";
   spiffsStorage.saveConfigToSpiffs();

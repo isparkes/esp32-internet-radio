@@ -60,6 +60,17 @@ bool SpiffsStorage_::getConfigFromSpiffs()
         cc->WifiOnAtStart = json["WifiOnAtStart"].as<bool>();
         debugMsgSpfX("Loaded WifiOnAtStart: " + String(cc->WifiOnAtStart));
 
+        // Written by firmware older than the blanking feature, so fall back
+        // to the default rather than leaving blanking permanently off.
+        if (json.containsKey("OledBlankMins")) {
+          cc->oledBlankMins = json["OledBlankMins"].as<int>();
+          if (cc->oledBlankMins < 0) cc->oledBlankMins = 0;
+          if (cc->oledBlankMins > MAX_OLED_BLANK_MINS) cc->oledBlankMins = MAX_OLED_BLANK_MINS;
+        } else {
+          cc->oledBlankMins = DEFAULT_OLED_BLANK_MINS;
+        }
+        debugMsgSpfX("Loaded OledBlankMins: " + String(cc->oledBlankMins));
+
         loaded = true;
       }
       else
@@ -86,6 +97,7 @@ void SpiffsStorage_::saveConfigToSpiffs()
   json["WiFiSSID"] = cc->WiFiSSID;
   json["WiFiPassword"] = cc->WiFiPassword;
   json["WifiOnAtStart"] = cc->WifiOnAtStart;
+  json["OledBlankMins"] = cc->oledBlankMins;
   
   File configFile = SPIFFS.open("/config/config.json", "w");
   if (!configFile)

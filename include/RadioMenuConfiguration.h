@@ -23,6 +23,9 @@ void buildAudioMenuDynamic();
 void buildWifiMenuDynamic();
 void buildSystemMenuDynamic();
 
+// Display blanking
+void applyOledBlanking();
+
 // Menu loop functions
 void menuOncePerLoop();
 void menuOncePerSecond();

@@ -13,6 +13,7 @@ typedef struct {
   String WiFiSSID;
   String WiFiPassword;
   bool WifiOnAtStart;
+  int oledBlankMins;            // OLED blanking timeout in minutes, 0 = never blank
 
   String counterValuesZIN70;
   String counterValuesZIN18;

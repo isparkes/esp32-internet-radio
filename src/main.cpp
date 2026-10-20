@@ -91,6 +91,7 @@ void setup() {
     menuSystem.setStatusInputCallback(handleStatusInput);
     menuSystem.setStatusEncoderCallback(handleStatusEncoder);
     menuSystem.setMenuTimeout(10000);
+    applyOledBlanking();
     menuSystem.showStatusScreen();
   }
   #endif

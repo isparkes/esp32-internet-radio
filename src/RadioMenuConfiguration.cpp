@@ -144,6 +144,21 @@ void saveConfigCb() {
   spiffsStorage.saveConfigToSpiffs();
 }
 
+// Push the configured blanking timeout into the menu system.
+// 0 minutes means the OLED is never blanked.
+void applyOledBlanking() {
+  if (cc->oledBlankMins > 0) {
+    menuSystem.enableScreenSaver((unsigned long)cc->oledBlankMins * 60000UL);
+  } else {
+    menuSystem.disableScreenSaver();
+  }
+}
+
+void saveOledBlankingCb() {
+  applyOledBlanking();
+  spiffsStorage.saveConfigToSpiffs();
+}
+
 void toggleWiFiAtStartCb() {
   cc->WifiOnAtStart = !cc->WifiOnAtStart;
   buildSystemMenuDynamic();
@@ -238,6 +253,8 @@ void buildSystemMenuDynamic() {
   menuSystem.addAction(systemMenu, "Restart Device", restartDeviceCb);
   menuSystem.addAction(systemMenu, "Save Config", saveConfigCb);
   menuSystem.addEitherOr(systemMenu, "WiFi at Start", &cc->WifiOnAtStart, "ON", "OFF", NULL);
+  menuSystem.addNumericValue(systemMenu, "Blank (0=off)", &cc->oledBlankMins,
+                             0, MAX_OLED_BLANK_MINS, 1, "min", saveOledBlankingCb);
   #ifdef DEBUG
   menuSystem.addAction(systemMenu, "Debug 10m", debugOn10minsCb);
   #endif
@@ -294,6 +311,8 @@ void buildRadioMenus() {
   menuSystem.addAction(systemMenu, "Restart Device", restartDeviceCb);
   menuSystem.addAction(systemMenu, "Save Config", saveConfigCb);
   menuSystem.addEitherOr(systemMenu, "WiFi at Start", &cc->WifiOnAtStart, "ON", "OFF", NULL);
+  menuSystem.addNumericValue(systemMenu, "Blank (0=off)", &cc->oledBlankMins,
+                             0, MAX_OLED_BLANK_MINS, 1, "min", saveOledBlankingCb);
   #ifdef DEBUG
   menuSystem.addAction(systemMenu, "Debug 10m", debugOn10minsCb);
   #endif
