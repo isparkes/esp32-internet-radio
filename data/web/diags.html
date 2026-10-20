@@ -48,6 +48,7 @@ fetch('/api/getDiags').then(r=>r.json()).then(d=>{
 document.getElementById('sys').innerHTML=
 row('Uptime',d.uptime)+
 row('Runtime',d.runtime)+
+row('Play Time',d.playtime)+
 row('CPU Freq',d.cpufreq+' MHz')+
 row('SDK',d.sdkversion)+
 row('Reset Reason',d.resetreason)+

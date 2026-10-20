@@ -419,6 +419,11 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
     snprintf(buf, sizeof(buf), "Frames: %luk", (unsigned long)(radioOutputManager.getFramesDecoded() / 1000));
     display->print(buf);
 
+    // Total play time over the lifetime of the unit
+    display->setCursor(0, 56);
+    snprintf(buf, sizeof(buf), "Play: %luh %02lum", cs->playtimeMins / 60, cs->playtimeMins % 60);
+    display->print(buf);
+
     return;
   }
   display->setTextSize(1);

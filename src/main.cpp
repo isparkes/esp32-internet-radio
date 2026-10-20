@@ -251,6 +251,18 @@ void performOncePerSecondProcessing() {
 
   // -------------------------------------------------------------------------------
 
+  // Usage stats: accumulate play time a second at a time, so part minutes either
+  // side of a start or stop are not lost
+  static unsigned int playtimeSecs = 0;
+  if (radioOutputManager.isPlaying()) {
+    if (++playtimeSecs >= 60) {
+      playtimeSecs -= 60;
+      cs->playtimeMins++;
+    }
+  }
+
+  // -------------------------------------------------------------------------------
+
   feedWatchdog();
 }
 
@@ -268,6 +280,10 @@ void performOncePerMinuteProcessing() {
 // ************************************************************
 void performOncePerHourProcessing() {
   debugMsgInr("---> OncePerHourProcessing");
+
+  // Flush the usage counters so that at most an hour of play time is lost on a
+  // power cut
+  spiffsStorage.saveStatsToSpiffs();
 }
 
 // ************************************************************

@@ -64,7 +64,7 @@ Once connected to WiFi, access the device at `http://<device-ip>/` or `http://<h
 
 - **Home** (`/`) — landing page with links to controls, diagnostics, and restart
 - **Radio Control** (`/radio`) — play/stop stations, manage station list, volume slider
-- **Diagnostics** (`/web/diags.html`) — system info, memory, firmware, partition table
+- **Diagnostics** (`/web/diags.html`) — system info, uptime and total play time, memory, firmware, partition table
 - **Firmware Update** (`/update`) — upload a new firmware image; `/updatefs` does the same for the SPIFFS image
 
 ### REST API

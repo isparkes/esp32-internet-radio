@@ -127,7 +127,7 @@ Status Screen (default)
           └─ Reset WiFi
 ```
 
-The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second system-info overlay (IP, heap, streams played, frames decoded).
+The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second system-info overlay (IP, heap, streams played, frames decoded, total play time).
 
 Menus are rebuilt dynamically when state changes (e.g., WiFi connects/disconnects).
 
@@ -194,7 +194,7 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 | Endpoint | Method | Request | Response |
 |----------|--------|---------|----------|
 | `/api/getSummary` | GET | — | `{ ip, mac, ssid, clockurl, version }` |
-| `/api/getDiags` | GET | — | `{ uptime, heap, minfreeheap, cpufreq, sdkversion, sketchsize, flashsize, compiledate, sketchmd5, resetreason, partitions, features, ... }` |
+| `/api/getDiags` | GET | — | `{ uptime, playtime, heap, minfreeheap, cpufreq, sdkversion, sketchsize, flashsize, compiledate, sketchmd5, resetreason, partitions, features, ... }` |
 | `/api/getConfig` | GET | — | `{ WifiOnAtStart }` |
 | `/api/postConfig` | POST | JSON config fields | — |
 | `/utils/restart` | GET | — | Reboots device |
@@ -238,7 +238,7 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 /config/
   config.json      — WiFi credentials, WifiOnAtStart flag, OledBlankMins, AudioBalance,
                      Volume, SelectedStation, PlayOnStart
-  stats.json       — Uptime counters (uptimeMins, tubeOnTimeMins)
+  stats.json       — Usage counters (uptimeMins, playtimeMins)
   stations.json    — Radio station list [{ name, url }, ...]
 /web/
   index.html       — Landing page
@@ -267,8 +267,8 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 ### Statistics (`stats.json`)
 
 - `uptimeMins` — total lifetime uptime in minutes
-- `tubeOnTimeMins` — total display-on time in minutes
-- Saved periodically and on restart
+- `playtimeMins` — total lifetime play time in minutes, accumulated a second at a time while the stream is playing
+- Saved once an hour, at midnight, and on demand via `/utils/saveStats`
 
 ## FreeRTOS Task Layout
 

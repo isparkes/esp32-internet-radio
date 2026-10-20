@@ -317,11 +317,11 @@ void getDiagsDataHandler(AsyncWebServerRequest *request) {
   JsonObject &root = jsonBuffer.createObject();  
 
   const char compile_date[] = __DATE__ " " __TIME__;
-  // Total ontime for the life of the clock
+  // Total uptime for the life of the unit
   root["uptime"] = secsToReadableString(cs->uptimeMins * 60);
 
-  // Total time the tubes have been on for
-  root["ontime"] = secsToReadableString(cs->playtimeMins * 60);
+  // Total time the radio has spent playing
+  root["playtime"] = secsToReadableString(cs->playtimeMins * 60);
 
   root["heap"] = ESP.getFreeHeap();
   root["freesketch"] = ESP.getFreeSketchSpace();

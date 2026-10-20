@@ -206,6 +206,7 @@ void SpiffsStorage_::saveStatsToSpiffs()
   DynamicJsonBuffer jsonBuffer;
   JsonObject &json = jsonBuffer.createObject();
   json.set("uptime", cs->uptimeMins);
+  json.set("playtime", cs->playtimeMins);
 
   File statsFile = SPIFFS.open("/config/stats.json", "w");
   if (!statsFile)
