@@ -8,7 +8,7 @@
 
 
 // -------------------------------------------------------------------------------
-#define SOFTWARE_VERSION "INR-ESP32 1.0.0.0"
+#define SOFTWARE_VERSION "INR-ESP32 1.0.1.0"
 
 // Add debug statments to code - needs extra space
 #define DEBUG_OFF                   // DEBUG | DEBUG_OFF
@@ -33,3 +33,11 @@
 
 #define DEFAULT_OLED_BLANK_MINS 0                   // OLED blanking timeout, 0 = never blank
 #define MAX_OLED_BLANK_MINS 60                      // Longest selectable blanking timeout
+
+#define DEFAULT_AUDIO_BALANCE 0                     // Stereo balance, 0 = centre
+#define MAX_AUDIO_BALANCE 100                       // Full left (-) / full right (+)
+#define AUDIO_BALANCE_STEP 5                        // Balance menu adjustment step
+
+#define DEFAULT_VOLUME 10                           // Volume 0-100 before anything is saved
+#define DEFAULT_STATION 0                           // Station index before anything is saved
+#define DEFAULT_PLAY_ON_START false                 // Start playing at boot

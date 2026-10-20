@@ -9,6 +9,7 @@
 #include <AudioGeneratorTalkie.h>
 #include <AudioGeneratorMP3.h>
 #include <AudioOutputI2S.h>
+#include "AudioOutputI2SBalance.h"
 
 #include "Defs.h"
 #include "DebugManager.h"
@@ -32,9 +33,10 @@ class RadioOutputManager_ {
     public:
       void initializeAudioOutput();
       void playStartupJingle();
-      void startRadioStream(String url, String stationName, float gain);
+      void startRadioStream(String url, String stationName, float gain, int stationIdx);
       void stopRadioStream();
       void StartPlaying();
+      void requestAutoPlay();   // Start playing as soon as WiFi is available
       void StopPlaying();
       void audioOncePerSecond();
       void audioOncePerHour();
@@ -55,7 +57,12 @@ class RadioOutputManager_ {
       // Volume control (0-100)
       void setVolume(int vol);
 
+      // Stereo balance (-100 = full left, 0 = centre, +100 = full right)
+      void setBalance(int balance);
+      int getBalance() const { return _balance; }
+
       String getStationName() { return _stationName; }
+      int getStationIndex() const { return _stationIdx; }
       String getUrl() { return _url; }
       const char* getSongTitle() { return _songTitle; }
       int getBufferFillPercent() const {
@@ -78,8 +85,10 @@ class RadioOutputManager_ {
       size_t audioBufferSize = 0;
 
       float _fgain = DEFAULT_GAIN;
+      int _balance = DEFAULT_AUDIO_BALANCE;
       String _url = "";
       String _stationName = "";
+      int _stationIdx = DEFAULT_STATION;
       char _songTitle[64] = "";
       volatile bool playing = false;
       volatile bool audioTaskRunning = false;
@@ -94,6 +103,9 @@ class RadioOutputManager_ {
       unsigned long reconnectAt = 0;       // millis() timestamp to attempt reconnect
       static const unsigned long RECONNECT_DELAY_MS = 5000;
       static const unsigned long RECONNECT_WIFI_WAIT_MS = 15000;
+      bool autoPlayPending = false;        // waiting for WiFi to start playing at boot
+      unsigned long autoPlayGiveUpAt = 0;  // millis() timestamp to stop waiting
+      static const unsigned long AUTOPLAY_WIFI_WAIT_MS = 60000;
 
       static void audioTask(void *param);
   };

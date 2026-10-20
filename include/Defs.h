@@ -12,6 +12,10 @@
 // Onboard LED 
 #define LED_PIN 2
 
+// Level that lights the onboard LED. Boards that wire the LED between 3V3 and
+// the pin light it when the pin is LOW - set this to LOW on such a board.
+#define LED_ON_LEVEL HIGH
+
 // Menu system pin names (for clarity in menu code)
 #define PIN_ENC_CLK     26
 #define PIN_ENC_DT      14

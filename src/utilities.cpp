@@ -58,6 +58,10 @@ String secsToReadableString (long secsValue) {
 void resetOptions() {
   cc->WifiOnAtStart = true;
   cc->oledBlankMins = DEFAULT_OLED_BLANK_MINS;
+  cc->audioBalance = DEFAULT_AUDIO_BALANCE;
+  cc->volume = DEFAULT_VOLUME;
+  cc->selectedStation = DEFAULT_STATION;
+  cc->playOnStart = DEFAULT_PLAY_ON_START;
   cc->WiFiSSID = "";
   cc->WiFiPassword = "";
   spiffsStorage.saveConfigToSpiffs();
@@ -763,11 +767,12 @@ void postPlayHandler(AsyncWebServerRequest *request) {
   int idx = request->hasArg("index") ? request->arg("index").toInt() : 0;
   String name, url;
   if (!spiffsStorage.getStation(idx, name, url) && idx != 0) {
-    spiffsStorage.getStation(0, name, url);
+    idx = 0;
+    spiffsStorage.getStation(idx, name, url);
   }
   if (name.length() > 0) {
     float gain = (volume / 100.0f) * MAX_GAIN;
-    radioOutputManager.startRadioStream(url, name, gain);
+    radioOutputManager.startRadioStream(url, name, gain, idx);
     request->send(200, "application/json", "{\"status\":\"Playing\"}");
   } else {
     request->send(200, "application/json", "{\"status\":\"No stations\"}");

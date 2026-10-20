@@ -14,6 +14,10 @@ typedef struct {
   String WiFiPassword;
   bool WifiOnAtStart;
   int oledBlankMins;            // OLED blanking timeout in minutes, 0 = never blank
+  int audioBalance;             // Stereo balance, -100 = full left, 0 = centre, +100 = full right
+  int volume;                   // Playback volume 0-100, restored at startup
+  int selectedStation;          // Index into stations.json, restored at startup
+  bool playOnStart;             // Start playing the saved station once WiFi is up
 
   String counterValuesZIN70;
   String counterValuesZIN18;

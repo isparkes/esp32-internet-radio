@@ -71,6 +71,39 @@ bool SpiffsStorage_::getConfigFromSpiffs()
         }
         debugMsgSpfX("Loaded OledBlankMins: " + String(cc->oledBlankMins));
 
+        if (json.containsKey("AudioBalance")) {
+          cc->audioBalance = json["AudioBalance"].as<int>();
+          if (cc->audioBalance < -MAX_AUDIO_BALANCE) cc->audioBalance = -MAX_AUDIO_BALANCE;
+          if (cc->audioBalance >  MAX_AUDIO_BALANCE) cc->audioBalance =  MAX_AUDIO_BALANCE;
+        } else {
+          cc->audioBalance = DEFAULT_AUDIO_BALANCE;
+        }
+        debugMsgSpfX("Loaded AudioBalance: " + String(cc->audioBalance));
+
+        if (json.containsKey("Volume")) {
+          cc->volume = json["Volume"].as<int>();
+          if (cc->volume < 0) cc->volume = 0;
+          if (cc->volume > 100) cc->volume = 100;
+        } else {
+          cc->volume = DEFAULT_VOLUME;
+        }
+        debugMsgSpfX("Loaded Volume: " + String(cc->volume));
+
+        if (json.containsKey("SelectedStation")) {
+          cc->selectedStation = json["SelectedStation"].as<int>();
+          if (cc->selectedStation < 0) cc->selectedStation = 0;
+        } else {
+          cc->selectedStation = DEFAULT_STATION;
+        }
+        debugMsgSpfX("Loaded SelectedStation: " + String(cc->selectedStation));
+
+        if (json.containsKey("PlayOnStart")) {
+          cc->playOnStart = json["PlayOnStart"].as<bool>();
+        } else {
+          cc->playOnStart = DEFAULT_PLAY_ON_START;
+        }
+        debugMsgSpfX("Loaded PlayOnStart: " + String(cc->playOnStart));
+
         loaded = true;
       }
       else
@@ -98,6 +131,10 @@ void SpiffsStorage_::saveConfigToSpiffs()
   json["WiFiPassword"] = cc->WiFiPassword;
   json["WifiOnAtStart"] = cc->WifiOnAtStart;
   json["OledBlankMins"] = cc->oledBlankMins;
+  json["AudioBalance"] = cc->audioBalance;
+  json["Volume"] = cc->volume;
+  json["SelectedStation"] = cc->selectedStation;
+  json["PlayOnStart"] = cc->playOnStart;
   
   File configFile = SPIFFS.open("/config/config.json", "w");
   if (!configFile)

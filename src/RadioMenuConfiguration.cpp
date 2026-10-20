@@ -7,6 +7,7 @@ MenuSystem menuSystem;
 StatusData radioStatus = {false, "0.0.0.0"};
 MenuItem* mainMenu = nullptr;
 MenuItem* audioMenu = nullptr;
+MenuItem* stationsMenu = nullptr;
 MenuItem* wifiMenu = nullptr;
 MenuItem* systemMenu = nullptr;
 
@@ -26,9 +27,9 @@ static void playStation(int idx) {
   String name, url;
   if (spiffsStorage.getStation(idx, name, url)) {
     float gain = (volume / 100.0f) * MAX_GAIN;
-    radioOutputManager.startRadioStream(url, name, gain);
+    radioOutputManager.startRadioStream(url, name, gain, idx);
   }
-  buildAudioMenuDynamic();
+  buildStationsMenuDynamic();
 }
 static void playStation0() { playStation(0); }
 static void playStation1() { playStation(1); }
@@ -141,6 +142,9 @@ void restartDeviceCb() {
 }
 
 void saveConfigCb() {
+  // Snapshot the live playback settings so they are restored on next boot
+  cc->volume = volume;
+  cc->selectedStation = radioOutputManager.getStationIndex();
   spiffsStorage.saveConfigToSpiffs();
 }
 
@@ -156,6 +160,15 @@ void applyOledBlanking() {
 
 void saveOledBlankingCb() {
   applyOledBlanking();
+  spiffsStorage.saveConfigToSpiffs();
+}
+
+void savePlayOnStartCb() {
+  spiffsStorage.saveConfigToSpiffs();
+}
+
+void saveAudioBalanceCb() {
+  radioOutputManager.setBalance(cc->audioBalance);
   spiffsStorage.saveConfigToSpiffs();
 }
 
@@ -184,17 +197,35 @@ void buildAudioMenuDynamic() {
   // Clear existing items and repopulate
   menuSystem.clearMenuItems(audioMenu);
 
+  menuSystem.addAction(audioMenu, "Play", startPlaying);
+  menuSystem.addAction(audioMenu, "Stop", stopPlaying);
+  menuSystem.addNumericValue(audioMenu, "Balance (0=mid)", &cc->audioBalance,
+                             -MAX_AUDIO_BALANCE, MAX_AUDIO_BALANCE, AUDIO_BALANCE_STEP,
+                             "L/R", saveAudioBalanceCb);
+  menuSystem.addEitherOr(audioMenu, "Play at Start", &cc->playOnStart, "ON", "OFF", savePlayOnStartCb);
+
+  menuSystem.navigateToMenu(audioMenu);
+}
+
+// ************************************************************
+// Build the Stations menu (the station list)
+// ************************************************************
+void buildStationsMenuDynamic() {
+  if (!stationsMenu) return;
+
+  // Clear existing items and repopulate
+  menuSystem.clearMenuItems(stationsMenu);
+
   int count = spiffsStorage.getStationCount();
   for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
     String name, url;
     spiffsStorage.getStation(i, name, url);
     strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
     stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
-    menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
+    menuSystem.addAction(stationsMenu, stationNameBufs[i], stationCallbacks[i]);
   }
-  menuSystem.addAction(audioMenu, "Stop", stopPlaying);
 
-  menuSystem.navigateToMenu(audioMenu);
+  menuSystem.navigateToMenu(stationsMenu);
 }
 
 // ************************************************************
@@ -270,7 +301,7 @@ void buildRadioMenus() {
   mainMenu = menuSystem.createMenu("Main Menu");
 
   // Build submenus
-  audioMenu = menuSystem.createMenu("Audio");
+  stationsMenu = menuSystem.createMenu("Stations");
   {
     int count = spiffsStorage.getStationCount();
     for (int i = 0; i < count && i < MAX_MENU_STATIONS; i++) {
@@ -278,10 +309,17 @@ void buildRadioMenus() {
       spiffsStorage.getStation(i, name, url);
       strncpy(stationNameBufs[i], name.c_str(), sizeof(stationNameBufs[0]) - 1);
       stationNameBufs[i][sizeof(stationNameBufs[0]) - 1] = '\0';
-      menuSystem.addAction(audioMenu, stationNameBufs[i], stationCallbacks[i]);
+      menuSystem.addAction(stationsMenu, stationNameBufs[i], stationCallbacks[i]);
     }
-    menuSystem.addAction(audioMenu, "Stop", stopPlaying);
   }
+
+  audioMenu = menuSystem.createMenu("Audio");
+  menuSystem.addAction(audioMenu, "Play", startPlaying);
+  menuSystem.addAction(audioMenu, "Stop", stopPlaying);
+  menuSystem.addNumericValue(audioMenu, "Balance (0=mid)", &cc->audioBalance,
+                             -MAX_AUDIO_BALANCE, MAX_AUDIO_BALANCE, AUDIO_BALANCE_STEP,
+                             "L/R", saveAudioBalanceCb);
+  menuSystem.addEitherOr(audioMenu, "Play at Start", &cc->playOnStart, "ON", "OFF", savePlayOnStartCb);
 
   wifiMenu = menuSystem.createMenu("WiFi");
   if (WiFi.isConnected()) {
@@ -318,6 +356,7 @@ void buildRadioMenus() {
   #endif
   menuSystem.addAction(systemMenu, "Reset WiFi", resetWiFiInfoCb);
 
+  menuSystem.addSubmenu(mainMenu, "Stations", stationsMenu);
   menuSystem.addSubmenu(mainMenu, "Audio", audioMenu);
   menuSystem.addSubmenu(mainMenu, "WiFi", wifiMenu);
   menuSystem.addSubmenu(mainMenu, "System", systemMenu);

@@ -21,11 +21,14 @@ Software version: `INR-ESP32 1.0.0.0`
 | Partition | Type | Offset | Size |
 |-----------|------|--------|------|
 | nvs | data | 0x9000 | 20 KB |
-| phy_init | data | 0xE000 | 4 KB |
-| factory | app | 0x10000 | 2944 KB |
-| spiffs | data | 0x2F0000 | 1088 KB |
+| otadata | data | 0xE000 | 8 KB |
+| app0 | app (ota_0) | 0x10000 | 1536 KB |
+| app1 | app (ota_1) | 0x190000 | 1536 KB |
+| spiffs | data | 0x310000 | 896 KB |
+| coredump | data | 0x3F0000 | 64 KB |
 
-Single factory app partition (no OTA). OTA was removed to maximize app space.
+Two app partitions so firmware can be updated over the air; the running image is
+limited to 1536 KB as a result.
 
 ### Memory Budget (typical)
 
@@ -37,9 +40,9 @@ Single factory app partition (no OTA). OTA was removed to maximize app space.
 ### Radio Mode
 
 1. `AudioFileSourceICYStream` opens an HTTP stream URL with ICY metadata support
-2. `AudioFileSourceBuffer` provides a 16 KB ring buffer to absorb network jitter
+2. `AudioFileSourceBuffer` provides a ring buffer to absorb network jitter — 256 KB from PSRAM where present, otherwise up to 32 KB from SRAM (`PSRAM_BUFFER_SIZE` / `SRAM_BUFFER_MAX`)
 3. `AudioGeneratorMP3` decodes the MP3 stream
-4. `AudioOutputI2S` sends PCM samples to the I2S peripheral
+4. `AudioOutputI2SBalance` (an `AudioOutputI2S` subclass) applies the stereo balance and sends PCM samples to the I2S peripheral
 
 The MP3 decode loop runs on a dedicated FreeRTOS task pinned to **core 0** at priority 3 with a 4096-byte stack. This isolates audio from display/WiFi processing on core 1.
 
@@ -48,6 +51,24 @@ The MP3 decode loop runs on a dedicated FreeRTOS task pinned to **core 0** at pr
 - Integer range: 0–100 (stored in global `volume`)
 - Mapped to float gain 0.0–1.2 (`MAX_GAIN`) via `AudioOutputI2S::SetGain()`
 - Adjustable via rotary encoder on status screen or web interface
+- Not saved as it changes; System → Save Config snapshots it to `config.json`, and it is restored on the next boot
+
+### Balance Control
+
+- Integer range: -100 (full left) to +100 (full right), 0 = centre, stored as `AudioBalance`
+- Applied in `AudioOutputI2SBalance::ConsumeSample()` (`include/AudioOutputI2SBalance.h`) as a Q8 fixed-point scale per channel — two multiplies and two shifts per frame
+- Attenuates the opposite channel only; it never boosts, so it cannot add clipping on top of the gain stage
+- Mono streams are duplicated to stereo in the subclass, which reports stereo to the base class so that `MakeSampleStereo16()` cannot overwrite the balanced right channel
+- A new output object is created per stream, so the balance is re-applied in `StartPlaying()` alongside the gain
+- Adjustable via the Audio menu; persisted in `config.json`
+
+### Play at Start
+
+With `PlayOnStart` set, the saved station starts playing by itself after a boot.
+WiFi association takes a few seconds, so `setup()` only registers the request
+(`requestAutoPlay()`) and `audioOncePerLoop()` starts playback once WiFi is up,
+giving up after 60 seconds. Any stop — menu, web or status screen — cancels a
+request that has not fired yet.
 
 ### I2S Configuration
 
@@ -81,9 +102,13 @@ Connected to a PCM5102 DAC module.
 ```
 Status Screen (default)
   └─ [Encoder click] → Main Menu
+      ├─ Stations
+      │   └─ Station 1..N (play)
       ├─ Audio
-      │   ├─ Station 1..N (play)
-      │   └─ Stop
+      │   ├─ Play
+      │   ├─ Stop
+      │   ├─ Balance (0=mid) (stereo balance, -100..+100)
+      │   └─ Play at Start (ON/OFF toggle)
       ├─ WiFi
       │   ├─ Disconnect WiFi (when connected)
       │   ├─ Reconnect Prev (when credentials stored)
@@ -95,7 +120,7 @@ Status Screen (default)
       │   └─ Enter Password (string editor)
       └─ System
           ├─ Restart Device
-          ├─ Save Config
+          ├─ Save Config (also snapshots current volume and station)
           ├─ WiFi at Start (ON/OFF toggle)
           ├─ Blank (0=off) (OLED blanking timeout, minutes)
           ├─ Debug 10m (debug builds only)
@@ -114,6 +139,26 @@ traffic is generated, so the display cannot couple interference into the audio.
 Any encoder movement or button press wakes the panel; that first input is
 swallowed so it only lights the screen rather than also acting on whatever was
 under it. Audio playback is unaffected by blanking.
+
+### Status LED
+
+The onboard LED (GPIO 2) shows what the radio is doing:
+
+| State | Pattern |
+|-------|---------|
+| Booting | Rapid flash, ~8/s — the first sign of life, started before anything else in `setup()` |
+| Radio stopped | Dark |
+| Radio playing | Slow flash, 100 ms every 2 s |
+| Resyncing after a dropped stream | Medium flash, 2/s |
+
+The pattern is produced by a low-priority FreeRTOS task (`TimerManager.cpp`) rather
+than the main loop, because `setup()` blocks in several places — SPIFFS, WiFi and
+the startup jingle — and the boot flash has to keep running through all of them.
+The main loop sets the pattern from the playback state on every pass and also
+services it, so the LED still works if the task could not be created.
+
+`LED_ON_LEVEL` in `Defs.h` sets which logic level lights the LED; boards that wire
+the LED between 3V3 and the pin need it set to `LOW`.
 
 ## WiFi Management
 
@@ -191,7 +236,8 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 
 ```
 /config/
-  config.json      — WiFi credentials, WifiOnAtStart flag, OledBlankMins
+  config.json      — WiFi credentials, WifiOnAtStart flag, OledBlankMins, AudioBalance,
+                     Volume, SelectedStation, PlayOnStart
   stats.json       — Uptime counters (uptimeMins, tubeOnTimeMins)
   stations.json    — Radio station list [{ name, url }, ...]
 /web/
@@ -205,7 +251,7 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 - Stored as a JSON array in `/config/stations.json`; no fixed limit on count
 - Read directly from SPIFFS on demand — no in-memory array; each call to `getStationCount()`, `getStation()`, `appendStation()`, or `deleteStation()` opens, operates on, and closes the file
 - Default station seeded automatically on first access if the file is absent: "Radio FFH" (`http://mp3.ffh.de/radioffh/hqlivestream.mp3`)
-- The OLED Audio menu shows up to 9 stations (one callback slot per entry); the JSON file may contain more
+- The OLED Stations menu shows up to 9 stations (one callback slot per entry); the JSON file may contain more
 - Managed via web interface (`/radio` page)
 
 ### Configuration (`config.json`)
@@ -213,6 +259,10 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 - `WiFiSSID` / `WiFiPassword` — stored WiFi credentials
 - `WifiOnAtStart` — boolean, auto-connect on boot
 - `OledBlankMins` — OLED blanking timeout in minutes (0 = never blank, max 60, default 0)
+- `AudioBalance` — stereo balance, -100 (full left) to +100 (full right), default 0 (centre)
+- `Volume` — playback volume 0-100 as of the last Save Config, restored at startup (default 10)
+- `SelectedStation` — index into `stations.json` as of the last Save Config, restored at startup; falls back to the first station if that index no longer exists (default 0)
+- `PlayOnStart` — boolean, start playing the saved station once WiFi connects after a boot (default false)
 
 ### Statistics (`stats.json`)
 
@@ -226,6 +276,7 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 |------|------|----------|-------|---------|
 | Main loop | 1 | 1 | default | WiFi, web server, menu, display |
 | Audio decode | 0 | 3 | 4096 | MP3 stream decoding |
+| Status LED | any | 1 | 2048 | Flashing the onboard LED |
 
 ## Build Configuration
 
@@ -244,9 +295,16 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 | `MAX_GAIN` | float (default 1.2) | Audio gain ceiling |
 | `DEFAULT_OLED_BLANK_MINS` | int (default 0) | Factory default OLED blanking timeout, 0 = never |
 | `MAX_OLED_BLANK_MINS` | int (default 60) | Longest blanking timeout selectable in the menu |
+| `LED_ON_LEVEL` | `HIGH` / `LOW` (`Defs.h`) | Logic level that lights the onboard LED |
+| `DEFAULT_AUDIO_BALANCE` | int (default 0) | Factory default stereo balance, 0 = centre |
+| `MAX_AUDIO_BALANCE` | int (default 100) | Balance range limit, applied either side of centre |
+| `AUDIO_BALANCE_STEP` | int (default 5) | Balance adjustment step in the menu |
+| `DEFAULT_VOLUME` | int (default 10) | Volume used before anything has been saved |
+| `DEFAULT_STATION` | int (default 0) | Station index used before anything has been saved |
+| `DEFAULT_PLAY_ON_START` | bool (default false) | Whether a fresh config starts playing at boot |
 
 ## Known Constraints
 
 - Web page polling (auto-refresh) causes audio breakup due to WiFi bandwidth contention; web pages use one-time data fetch only
-- No OTA update support (removed to fit in flash); firmware updates require USB
+- The dual OTA partition layout caps the app image at 1536 KB, which is most of the reason flash sits around 83% full
 - ArduinoJson v5 (not v6/v7) due to existing codebase patterns

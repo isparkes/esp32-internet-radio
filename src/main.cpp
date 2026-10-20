@@ -15,6 +15,9 @@
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
 
+  // First thing up: the status LED, flashing rapidly to show the board is alive
+  startLed();
+
   #ifdef FEATURE_MENU
   menuSystem.showSplash(SDAint, SCLint);
   #endif
@@ -66,15 +69,6 @@ void setup() {
 
   // -------------------------------------------------------------------------
 
-  debugMsgInr("Start up Timers");
-
-  // Starts the display and the status LED flashing
-  startTimers();
-
-  // -------------------------------------------------------------------------
-  
-  // -------------------------------------------------------------------------
-
   #ifdef FEATURE_MENU
   debugMsgInr("Starting Menu System");
   if (!menuSystem.begin(SDAint, SCLint,
@@ -113,11 +107,6 @@ void setup() {
   }
 
   // -------------------------------------------------------------------------
-  
-  debugMsgInr("Start timers");
-  startTimers();
-
-  // -------------------------------------------------------------------------
 
   debugMsgInr("Initialising Audio");
 
@@ -128,6 +117,10 @@ void setup() {
 
   radioOutputManager.initializeAudioOutput();
   radioOutputManager.playStartupJingle();
+
+  if (cc->playOnStart) {
+    radioOutputManager.requestAutoPlay();
+  }
 
   // -------------------------------------------------------------------------
 
@@ -188,6 +181,19 @@ void performOncePerLoopProcessing() {
 
   // -------------------------------------------------------------------------------
 
+  // Status LED: slow flash while playing, medium flash while resyncing,
+  // otherwise dark
+  if (radioOutputManager.isPlaying()) {
+    setLedFlashType(LED_MODE_PLAYING);
+  } else if (radioOutputManager.isReconnecting()) {
+    setLedFlashType(LED_MODE_RESYNC);
+  } else {
+    setLedFlashType(LED_MODE_OFF);
+  }
+  ledOncePerLoop();
+
+  // -------------------------------------------------------------------------------
+
   // OTA polling - every 500ms is more than responsive enough
   static unsigned long lastOTACheck = 0;
   if (nowMillis - lastOTACheck >= 500) {
@@ -231,19 +237,6 @@ void performOncePerLoopProcessing() {
 // ************************************************************
 void performOncePerSecondProcessing() {
   lastSecondStartMillis = nowMillis;
-
-  // -------------------------------------------------------------------------------
-  
-  // Maintain the LED next to the controller
-  if (WiFi.status() == WL_CONNECTED) {
-    setLedFlashType(0);
-
-    if (radioOutputManager.isPlaying()) {
-      setLedFlashType(2);
-    }
-  } else {
-    setLedFlashType(1);
-  }
 
   // -------------------------------------------------------------------------------
 

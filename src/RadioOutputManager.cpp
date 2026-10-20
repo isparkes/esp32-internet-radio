@@ -16,9 +16,10 @@ void RadioOutputManager_::playStartupJingle() {
     return;
   }
 
-  AudioOutputI2S *jingleOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
+  AudioOutputI2SBalance *jingleOut = new AudioOutputI2SBalance(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
   jingleOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
   jingleOut->SetGain(DEFAULT_GAIN);
+  jingleOut->SetBalance(cc->audioBalance);
 
   AudioGeneratorMP3 *mp3Jingle = new AudioGeneratorMP3();
   mp3Jingle->begin(src, jingleOut);
@@ -37,22 +38,33 @@ void RadioOutputManager_::playStartupJingle() {
 void RadioOutputManager_::initializeAudioOutput() {
   debugManagerLink("RadioOutputManager: Initializing audio output");
 
-  // Set default station — reads first entry from stations.json
+  // Restore the saved station, falling back to the first entry if the saved
+  // index no longer exists (the list may have been edited since the save)
   String name, url;
-  if (spiffsStorage.getStation(0, name, url)) {
+  int idx = cc->selectedStation;
+  if (!spiffsStorage.getStation(idx, name, url)) {
+    idx = 0;
+    spiffsStorage.getStation(idx, name, url);
+  }
+  if (name.length() > 0) {
     _url = url;
     _stationName = name;
+    _stationIdx = idx;
   } else {
     _url = "http://mp3.ffh.de/radioffh/hqlivestream.mp3";
     _stationName = "Radio FFH";
+    _stationIdx = 0;
   }
+
+  volume = cc->volume;
   _fgain = (volume / 100.0f) * MAX_GAIN;
+  _balance = cc->audioBalance;
 }
 
 // ************************************************************
 // Initiate a radio stream
 // ************************************************************
-void RadioOutputManager_::startRadioStream(String url, String stationName, float gain) {
+void RadioOutputManager_::startRadioStream(String url, String stationName, float gain, int stationIdx) {
   debugManagerLink("RadioOutputManager: Starting radio stream: " + url + " with gain: " + String(gain));
 
   // Stop any existing playback first
@@ -62,6 +74,7 @@ void RadioOutputManager_::startRadioStream(String url, String stationName, float
 
   _url = url;
   _stationName = stationName;
+  _stationIdx = stationIdx;
   _fgain = gain;
   _songTitle[0] = '\0';
   StartPlaying();
@@ -116,8 +129,9 @@ void RadioOutputManager_::StartPlaying() {
   buff = new AudioFileSourceBuffer(file, audioBuffer, audioBufferSize);
   buff->RegisterStatusCB(StatusCallback, (void*)"buffer");
 
-  AudioOutputI2S *i2sOut = new AudioOutputI2S(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
+  AudioOutputI2SBalance *i2sOut = new AudioOutputI2SBalance(0, AudioOutputI2S::EXTERNAL_I2S, 8, AudioOutputI2S::APLL_AUTO);
   i2sOut->SetPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  i2sOut->SetBalance(_balance);
   out = i2sOut;
   out->SetGain(_fgain);
   mp3 = new AudioGeneratorMP3();
@@ -145,10 +159,24 @@ void RadioOutputManager_::StartPlaying() {
 }
 
 // ************************************************************
+// Ask for playback to start once WiFi is up. WiFi association takes a few
+// seconds, so a boot-time StartPlaying() would simply fail - audioOncePerLoop()
+// retries until WiFi arrives or the wait is given up on.
+// ************************************************************
+void RadioOutputManager_::requestAutoPlay() {
+  autoPlayPending = true;
+  autoPlayGiveUpAt = millis() + AUTOPLAY_WIFI_WAIT_MS;
+  debugMsgAud("Auto-play requested - waiting for WiFi");
+}
+
+// ************************************************************
 // Stop playing the stream
 // ************************************************************
 void RadioOutputManager_::StopPlaying() {
   debugMsgAud("Stop play");
+
+  // Any stop cancels a boot auto-play that hasn't fired yet
+  autoPlayPending = false;
 
   // Cancel any pending reconnect - this is an intentional stop
   streamFailed = false;
@@ -206,6 +234,18 @@ void RadioOutputManager_::setVolume(int vol) {
 }
 
 // ************************************************************
+// Set stereo balance (-100 = full left, 0 = centre, +100 = full right)
+// ************************************************************
+void RadioOutputManager_::setBalance(int balance) {
+  if (balance < -MAX_AUDIO_BALANCE) balance = -MAX_AUDIO_BALANCE;
+  if (balance >  MAX_AUDIO_BALANCE) balance =  MAX_AUDIO_BALANCE;
+  _balance = balance;
+  if (out) {
+    static_cast<AudioOutputI2SBalance *>(out)->SetBalance(_balance);
+  }
+}
+
+// ************************************************************
 // Report the streaming buffer fill level once per second
 // ************************************************************
 void RadioOutputManager_::audioOncePerSecond() {
@@ -225,6 +265,18 @@ void RadioOutputManager_::audioOncePerHour() {
 // 
 // ************************************************************
 void RadioOutputManager_::audioOncePerLoop() {
+  // Boot auto-play: wait for WiFi, then start the restored station
+  if (autoPlayPending && !playing) {
+    if (WiFi.status() == WL_CONNECTED) {
+      autoPlayPending = false;
+      debugMsgAud("Auto-play: WiFi up, starting " + _stationName);
+      StartPlaying();
+    } else if (millis() >= autoPlayGiveUpAt) {
+      autoPlayPending = false;
+      debugMsgAud("Auto-play: gave up waiting for WiFi");
+    }
+  }
+
   // Run the decoder inline when no task could be created.
   // Core 1 WDT is disabled so brief blocking on network I/O is safe.
   if (audioInlineMode && playing && mp3) {

@@ -14,12 +14,14 @@ extern MenuSystem menuSystem;
 extern StatusData radioStatus;
 extern MenuItem* mainMenu;
 extern MenuItem* audioMenu;
+extern MenuItem* stationsMenu;
 extern MenuItem* wifiMenu;
 extern MenuItem* systemMenu;
 
 // Menu building
 void buildRadioMenus();
 void buildAudioMenuDynamic();
+void buildStationsMenuDynamic();
 void buildWifiMenuDynamic();
 void buildSystemMenuDynamic();
 
