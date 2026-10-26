@@ -380,50 +380,190 @@ static void drawResyncIcon(Adafruit_SH1106G* display, uint8_t x, uint8_t y, uint
   display->fillTriangle(cx + r - 2, cy - r, cx + r + 3, cy - r, cx + r, cy - r + 4, SH110X_WHITE);
 }
 
+// ************************************************************
+// Geek-info overlay — cycled by repeated back-button presses
+// ************************************************************
+enum GeekInfoPage {
+  GEEK_PAGE_SYSTEM = 0,
+  GEEK_PAGE_WIFI,
+  GEEK_PAGE_STATION,
+  GEEK_PAGE_COUNT
+};
+
+// How long an info page stays up after the last back-button press
+static const unsigned long GEEK_INFO_TIMEOUT_MS = 2000;
+
 // Timestamp (millis) until which the geek-info overlay should be shown.
 static unsigned long geekInfoUntil = 0;
+// Which page the overlay is currently showing
+static uint8_t geekInfoPage = GEEK_PAGE_SYSTEM;
+
+// Characters that fit across the display at text size 1 (6 px per character)
+static const uint8_t GEEK_LINE_CHARS = SCREEN_WIDTH / 6;
+
+// Print at most GEEK_LINE_CHARS characters of s, so a long value cannot wrap
+// onto the line below it.
+static void printClipped(Adafruit_SH1106G* display, const char* s) {
+  char buf[GEEK_LINE_CHARS + 1];
+  strncpy(buf, s, GEEK_LINE_CHARS);
+  buf[GEEK_LINE_CHARS] = '\0';
+  display->print(buf);
+}
+
+// Common page header: centred title with a rule under it
+static void drawGeekHeader(Adafruit_SH1106G* display, uint8_t width, const char* title) {
+  display->setTextSize(1);
+  display->setTextColor(SH110X_WHITE);
+  display->setCursor((width - strlen(title) * 6) / 2, 2);
+  display->print(title);
+  display->drawLine(0, 12, width, 12, SH110X_WHITE);
+}
+
+// ------------------------------------------------------------
+// Page 1 — System Info
+// ------------------------------------------------------------
+static void renderSystemInfoPage(Adafruit_SH1106G* display, uint8_t width) {
+  drawGeekHeader(display, width, "-- System Info --");
+
+  char buf[24];
+
+  // IP address
+  display->setCursor(0, 16);
+  display->print("IP: ");
+  display->print(WiFi.isConnected() ? WiFi.localIP().toString() : "Not connected");
+
+  // Free heap
+  display->setCursor(0, 26);
+  snprintf(buf, sizeof(buf), "Heap: %lu KB", ESP.getFreeHeap() / 1024);
+  display->print(buf);
+
+  // Streams played
+  display->setCursor(0, 36);
+  snprintf(buf, sizeof(buf), "Streams: %lu", (unsigned long)radioOutputManager.getStreamsPlayed());
+  display->print(buf);
+
+  // Frames decoded (show in thousands)
+  display->setCursor(0, 46);
+  snprintf(buf, sizeof(buf), "Frames: %luk", (unsigned long)(radioOutputManager.getFramesDecoded() / 1000));
+  display->print(buf);
+
+  // Total play time over the lifetime of the unit
+  display->setCursor(0, 56);
+  snprintf(buf, sizeof(buf), "Play: %luh %02lum", cs->playtimeMins / 60, cs->playtimeMins % 60);
+  display->print(buf);
+}
+
+// ------------------------------------------------------------
+// Page 2 — WiFi Info
+// ------------------------------------------------------------
+static void renderWifiInfoPage(Adafruit_SH1106G* display, uint8_t width) {
+  drawGeekHeader(display, width, "--- WiFi Info ---");
+
+  char buf[32];
+
+  if (WiFi.isConnected()) {
+    // SSID of the AP we are joined to
+    display->setCursor(0, 16);
+    snprintf(buf, sizeof(buf), "SSID: %s", WiFi.SSID().c_str());
+    printClipped(display, buf);
+
+    // Our address and the gateway we route through
+    display->setCursor(0, 26);
+    snprintf(buf, sizeof(buf), "IP: %s", WiFi.localIP().toString().c_str());
+    printClipped(display, buf);
+
+    display->setCursor(0, 36);
+    snprintf(buf, sizeof(buf), "GW: %s", WiFi.gatewayIP().toString().c_str());
+    printClipped(display, buf);
+
+    // Signal strength, with a rough percentage (-90 dBm = 0%, -30 dBm = 100%)
+    int rssi = WiFi.RSSI();
+    int quality = (rssi + 90) * 100 / 60;
+    if (quality < 0) quality = 0;
+    if (quality > 100) quality = 100;
+    display->setCursor(0, 46);
+    snprintf(buf, sizeof(buf), "Sig: %ddBm (%d%%)", rssi, quality);
+    printClipped(display, buf);
+
+    // Our own MAC - exactly fills the line
+    display->setCursor(0, 56);
+    snprintf(buf, sizeof(buf), "MAC:%s", WiFi.macAddress().c_str());
+    printClipped(display, buf);
+  } else {
+    display->setCursor(0, 16);
+    display->print("Not connected");
+
+    // The credentials we would use on the next connection attempt
+    display->setCursor(0, 26);
+    snprintf(buf, sizeof(buf), "SSID: %s", cc->WiFiSSID.c_str());
+    printClipped(display, buf);
+
+    display->setCursor(0, 36);
+    snprintf(buf, sizeof(buf), "Saved: %s", wifiManager.wifiCredentialsReceived() ? "Yes" : "No");
+    printClipped(display, buf);
+
+    display->setCursor(0, 46);
+    snprintf(buf, sizeof(buf), "At start: %s", cc->WifiOnAtStart ? "ON" : "OFF");
+    printClipped(display, buf);
+
+    display->setCursor(0, 56);
+    snprintf(buf, sizeof(buf), "MAC:%s", WiFi.macAddress().c_str());
+    printClipped(display, buf);
+  }
+}
+
+// ------------------------------------------------------------
+// Page 3 — Station Info
+// ------------------------------------------------------------
+static void renderStationInfoPage(Adafruit_SH1106G* display, uint8_t width) {
+  drawGeekHeader(display, width, "-- Station Info --");
+
+  char buf[32];
+
+  // Station name, and its position in the station list
+  String name = radioOutputManager.getStationName();
+  display->setCursor(0, 16);
+  if (name.length() > 0) {
+    printClipped(display, name.c_str());
+  } else {
+    display->print("No station");
+  }
+
+  display->setCursor(0, 26);
+  snprintf(buf, sizeof(buf), "Station: %d of %d",
+           radioOutputManager.getStationIndex() + 1, spiffsStorage.getStationCount());
+  printClipped(display, buf);
+
+  // URL over two lines - long URLs are simply clipped
+  String url = radioOutputManager.getUrl();
+  display->setCursor(0, 36);
+  printClipped(display, url.c_str());
+  if (url.length() > GEEK_LINE_CHARS) {
+    display->setCursor(0, 46);
+    printClipped(display, url.c_str() + GEEK_LINE_CHARS);
+  }
+
+  // Playback state and how full the stream buffer is
+  display->setCursor(0, 56);
+  const char* state = radioOutputManager.isPlaying()      ? "Playing"
+                    : radioOutputManager.isReconnecting() ? "Resync"
+                                                          : "Stopped";
+  snprintf(buf, sizeof(buf), "%s  Buf:%d%%", state, radioOutputManager.getBufferFillPercent());
+  printClipped(display, buf);
+}
 
 // ************************************************************
 // Status screen renderer
 // ************************************************************
 void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height) {
 
-  // Geek-info overlay — shown for 2 s after the back button is pressed
+  // Geek-info overlay - shown for a short while after the back button is pressed
   if (millis() < geekInfoUntil) {
-    display->setTextSize(1);
-    display->setTextColor(SH110X_WHITE);
-
-    display->setCursor(20, 2);
-    display->print("-- System Info --");
-    display->drawLine(0, 12, width, 12, SH110X_WHITE);
-
-    char buf[24];
-
-    // IP address
-    display->setCursor(0, 16);
-    display->print("IP: ");
-    display->print(WiFi.isConnected() ? WiFi.localIP().toString() : "Not connected");
-
-    // Free heap
-    display->setCursor(0, 26);
-    snprintf(buf, sizeof(buf), "Heap: %lu KB", ESP.getFreeHeap() / 1024);
-    display->print(buf);
-
-    // Streams played
-    display->setCursor(0, 36);
-    snprintf(buf, sizeof(buf), "Streams: %lu", (unsigned long)radioOutputManager.getStreamsPlayed());
-    display->print(buf);
-
-    // Frames decoded (show in thousands)
-    display->setCursor(0, 46);
-    snprintf(buf, sizeof(buf), "Frames: %luk", (unsigned long)(radioOutputManager.getFramesDecoded() / 1000));
-    display->print(buf);
-
-    // Total play time over the lifetime of the unit
-    display->setCursor(0, 56);
-    snprintf(buf, sizeof(buf), "Play: %luh %02lum", cs->playtimeMins / 60, cs->playtimeMins % 60);
-    display->print(buf);
-
+    switch (geekInfoPage) {
+      case GEEK_PAGE_WIFI:    renderWifiInfoPage(display, width);    break;
+      case GEEK_PAGE_STATION: renderStationInfoPage(display, width); break;
+      default:                renderSystemInfoPage(display, width);  break;
+    }
     return;
   }
   display->setTextSize(1);
@@ -538,7 +678,14 @@ bool handleStatusInput(ButtonEvent event) {
     return true;
   }
   if (event == BTN_BACK_CLICK) {
-    geekInfoUntil = millis() + 2000;
+    // While an info page is up, each press moves on to the next one; once it
+    // has timed out the next press starts again at the system page.
+    if (millis() < geekInfoUntil) {
+      geekInfoPage = (geekInfoPage + 1) % GEEK_PAGE_COUNT;
+    } else {
+      geekInfoPage = GEEK_PAGE_SYSTEM;
+    }
+    geekInfoUntil = millis() + GEEK_INFO_TIMEOUT_MS;
     return true;
   }
   return false;

@@ -5,7 +5,10 @@
 
 // -------------------------------------------------------------------------------
 
-#define WDT_TIMEOUT 5
+// Task watchdog timeout, seconds. Must comfortably exceed the longest blocking
+// call made from the main loop - opening a stream can sit in the HTTP connect
+// for ~5s (longer for https), so 5s would trip on a slow station.
+#define WDT_TIMEOUT 15
 
 #define SERIAL_BAUD_RATE 115200
 

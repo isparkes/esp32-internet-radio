@@ -179,17 +179,22 @@ void WebManager_::beginPortal() {
 void WebManager_::startOTA() {
   ArduinoOTA.setHostname(uniqHostname.c_str());
 
+  // An OTA upload blocks inside ArduinoOTA.handle() for the whole transfer,
+  // which is far longer than WDT_TIMEOUT - step out of the watchdog for it.
   ArduinoOTA.onStart([]() {
     debugMsgWbm("OTA update starting");
+    disableWatchdog();
   });
   ArduinoOTA.onEnd([]() {
     debugMsgWbm("OTA update complete");
+    enableWatchdog();
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     debugMsgWbm("OTA progress: " + String(progress * 100 / total) + "%");
   });
   ArduinoOTA.onError([](ota_error_t error) {
     debugMsgWbm("OTA error: " + String(error));
+    enableWatchdog();
   });
 
   ArduinoOTA.begin();

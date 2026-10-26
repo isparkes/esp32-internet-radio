@@ -6,21 +6,6 @@
 // --------------------------------------------------------------------------------------------------------
 
 // ************************************************************
-// Format a time into an output string
-// ************************************************************
-String timeToReadableStringFromTm(tm timeToFormat) {
-  char buf1[20];
-  sprintf(buf1, "%04d-%02d-%02d %02d:%02d:%02d",
-    timeToFormat.tm_year + 1900,
-    timeToFormat.tm_mon + 1,
-    timeToFormat.tm_mday,
-    timeToFormat.tm_hour,
-    timeToFormat.tm_min,
-    timeToFormat.tm_sec);
-  return String(buf1);
-}
-
-// ************************************************************
 // Format a duration into an output string
 // ************************************************************
 String secsToReadableString (long secsValue) {
@@ -65,44 +50,6 @@ void resetOptions() {
   cc->WiFiSSID = "";
   cc->WiFiPassword = "";
   spiffsStorage.saveConfigToSpiffs();
-}
-
-// ************************************************************
-// Get the field value at position Index
-// ************************************************************
-String getValueAtIndex(String data, char separator, int index)
-{
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length()-1;
-
-  for(int i=0; i<=maxIndex && found<=index; i++){
-    if(data.charAt(i)==separator || i==maxIndex){
-        found++;
-        strIndex[0] = strIndex[1]+1;
-        strIndex[1] = (i == maxIndex) ? i+1 : i;
-    }
-  }
-
-  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
-}
-
-// ************************************************************
-// Get the number of fields
-// ************************************************************
-int getValueCount(String data, char separator)
-{
-  int found = 0;
-  int strIndex[] = {0, -1};
-  int maxIndex = data.length()-1;
-
-  for(int i=0; i<=maxIndex ; i++){
-    if(data.charAt(i)==separator || i==maxIndex){
-        found++;
-    }
-  }
-
-  return found;
 }
 
 //**********************************************************************************
@@ -575,7 +522,9 @@ void getSPIFFSScanHandler(AsyncWebServerRequest *request) {
 }
 
 // ************************************************************
-// Turn on Watchdog
+// Subscribe the calling task to the watchdog. The TWDT itself is already
+// running (started by the IDF), so this just sets our timeout and panic
+// behaviour and adds this task to the watched list.
 // ************************************************************
 void enableWatchdog() {
   esp_task_wdt_init(WDT_TIMEOUT, true);
@@ -583,11 +532,11 @@ void enableWatchdog() {
 }
 
 // ************************************************************
-// Turn off Watchdog
+// Unsubscribe the calling task from the watchdog. Used around operations that
+// legitimately block for longer than WDT_TIMEOUT, such as an OTA upload.
 // ************************************************************
 void disableWatchdog() {
   esp_task_wdt_delete(NULL);
-  esp_task_wdt_deinit();
 }
 
 // ************************************************************

@@ -124,6 +124,10 @@ void setup() {
 
   // -------------------------------------------------------------------------
 
+  // Arm the task watchdog on the loop task. Everything slow and blocking
+  // (WiFi association, SPIFFS, audio init) is behind us by this point.
+  enableWatchdog();
+
   debugMsgInr("Startup done");
 }
 

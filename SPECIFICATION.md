@@ -127,7 +127,13 @@ Status Screen (default)
           └─ Reset WiFi
 ```
 
-The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second system-info overlay (IP, heap, streams played, frames decoded, total play time).
+The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second info overlay.
+
+The back button cycles through three info pages, each shown for 2 seconds after the last press. Pressing back while a page is up moves to the next page; once the overlay has timed out, the next press starts again at System Info:
+
+1. **System Info** - IP, free heap, streams played, frames decoded, total play time
+2. **WiFi Info** - SSID, IP, gateway, signal strength (dBm and %), MAC address. When not connected: the configured SSID, whether credentials are saved, the WiFi-at-start setting and the MAC address
+3. **Station Info** - station name, position in the station list, stream URL (over two lines), playback state and buffer fill
 
 Menus are rebuilt dynamically when state changes (e.g., WiFi connects/disconnects).
 
@@ -275,8 +281,19 @@ All pages use inline CSS/JS with no external dependencies. Dark theme, mobile-re
 | Task | Core | Priority | Stack | Purpose |
 |------|------|----------|-------|---------|
 | Main loop | 1 | 1 | default | WiFi, web server, menu, display |
-| Audio decode | 0 | 3 | 4096 | MP3 stream decoding |
+| Audio decode | 1 | 3 | 4096 | MP3 stream decoding |
 | Status LED | any | 1 | 2048 | Flashing the onboard LED |
+
+The audio task yields with `vTaskDelay(1)` each iteration so the lower-priority
+main loop still runs on core 1. If its stack cannot be allocated the decoder
+falls back to running inline from `audioOncePerLoop()`.
+
+### Watchdog
+
+- The IDF task watchdog is already running at boot (5 s, panic on timeout) with the core 0 idle task subscribed; core 1 idle is not subscribed in this build, so `disableCore1WDT()` in `setup()` is defensive only
+- `enableWatchdog()` at the end of `setup()` widens the timeout to `WDT_TIMEOUT` (15 s) and subscribes the main loop task; `feedWatchdog()` resets it once per second
+- 15 s is chosen to clear the longest blocking call made from the loop task — opening a stream sits in the HTTP connect for up to ~5 s, longer over https
+- An OTA upload blocks inside `ArduinoOTA.handle()` for the whole transfer, so the OTA `onStart` callback unsubscribes the loop task and `onEnd` / `onError` resubscribe it
 
 ## Build Configuration
 
