@@ -1,9 +1,35 @@
 #include "utilities.h"
 #include "RadioOutputManager.h"
+#include <esp_ota_ops.h>
 
 // --------------------------------------------------------------------------------------------------------
 // ----------------------------------------  Utility functions  -------------------------------------------
 // --------------------------------------------------------------------------------------------------------
+
+// ************************************************************
+// Size of the running sketch
+//
+// ESP.getSketchSize() runs esp_image_verify() over the whole app image - a
+// SHA-256 of ~1.3 MB read through the bootloader's flash mapping. That takes
+// hundreds of milliseconds and must not be called repeatedly while audio is
+// streaming. The figure cannot change while we are running, so measure it once
+// (priming it at boot, before the decoder starts) and hand out the cached value.
+// ************************************************************
+uint32_t getSketchSizeCached() {
+  static uint32_t sketchSize = 0;
+  if (sketchSize == 0) {
+    sketchSize = ESP.getSketchSize();
+  }
+  return sketchSize;
+}
+
+// ************************************************************
+// Size of the app partition we booted from - what the sketch has to fit in
+// ************************************************************
+uint32_t getAppPartitionSize() {
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  return running ? running->size : 0;
+}
 
 // ************************************************************
 // Format a duration into an output string
@@ -272,7 +298,7 @@ void getDiagsDataHandler(AsyncWebServerRequest *request) {
 
   root["heap"] = ESP.getFreeHeap();
   root["freesketch"] = ESP.getFreeSketchSpace();
-  root["sketchsize"] = ESP.getSketchSize();
+  root["sketchsize"] = getSketchSizeCached();
   root["flashsize"] = ESP.getFlashChipSize();
   root["compiledate"] = String(compile_date);
   root["cpufreq"] = ESP.getCpuFreqMHz();

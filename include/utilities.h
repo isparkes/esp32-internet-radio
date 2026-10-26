@@ -49,6 +49,10 @@ void resetWiFi();
 void resetOptions();
 void resetAll();
 
+// Firmware image sizes - measured once, see utilities.cpp
+uint32_t getSketchSizeCached();
+uint32_t getAppPartitionSize();
+
 void enableWatchdog();
 void disableWatchdog();
 void feedWatchdog();

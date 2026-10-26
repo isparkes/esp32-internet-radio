@@ -392,7 +392,7 @@ enum GeekInfoPage {
 };
 
 // How long an info page stays up after the last back-button press
-static const unsigned long GEEK_INFO_TIMEOUT_MS = 2000;
+static const unsigned long GEEK_INFO_TIMEOUT_MS = 3000;
 
 // Timestamp (millis) until which the geek-info overlay should be shown.
 static unsigned long geekInfoUntil = 0;
@@ -568,11 +568,12 @@ static void renderBuildInfoPage(Adafruit_SH1106G* display, uint8_t width) {
   display->setCursor(0, 26);
   printClipped(display, __DATE__ " " __TIME__);
 
-  // Sketch size against the space available in the app partition
+  // Sketch size against the app partition it has to fit in. Both figures are
+  // cached - measuring the sketch is far too costly to do on every render.
   display->setCursor(0, 36);
   snprintf(buf, sizeof(buf), "App: %luK of %luK",
-           (unsigned long)(ESP.getSketchSize() / 1024),
-           (unsigned long)((ESP.getSketchSize() + ESP.getFreeSketchSpace()) / 1024));
+           (unsigned long)(getSketchSizeCached() / 1024),
+           (unsigned long)(getAppPartitionSize() / 1024));
   printClipped(display, buf);
 
   // Total flash fitted, and the clock the CPU is running at

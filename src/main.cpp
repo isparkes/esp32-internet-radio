@@ -42,6 +42,13 @@ void setup() {
 
   // -------------------------------------------------------------------------
 
+  // Measure the sketch now, while nothing else is using the flash. The call
+  // verifies the whole app image, so it is slow - doing it here means the
+  // Build Info screen and the diagnostics page can read it for free later.
+  debugMsgInr("Sketch size: " + String(getSketchSizeCached() / 1024) + " KB of " + String(getAppPartitionSize() / 1024) + " KB");
+
+  // -------------------------------------------------------------------------
+
   debugMsgInr("Start up SPIFFS");
 
   // Initialize SPIFFS
