@@ -387,6 +387,7 @@ enum GeekInfoPage {
   GEEK_PAGE_SYSTEM = 0,
   GEEK_PAGE_WIFI,
   GEEK_PAGE_STATION,
+  GEEK_PAGE_BUILD,
   GEEK_PAGE_COUNT
 };
 
@@ -552,6 +553,41 @@ static void renderStationInfoPage(Adafruit_SH1106G* display, uint8_t width) {
   printClipped(display, buf);
 }
 
+// ------------------------------------------------------------
+// Page 4 - Build Info
+// ------------------------------------------------------------
+static void renderBuildInfoPage(Adafruit_SH1106G* display, uint8_t width) {
+  drawGeekHeader(display, width, "--- Build Info ---");
+
+  char buf[32];
+
+  // Firmware version and when this build was compiled
+  display->setCursor(0, 16);
+  printClipped(display, SOFTWARE_VERSION);
+
+  display->setCursor(0, 26);
+  printClipped(display, __DATE__ " " __TIME__);
+
+  // Sketch size against the space available in the app partition
+  display->setCursor(0, 36);
+  snprintf(buf, sizeof(buf), "App: %luK of %luK",
+           (unsigned long)(ESP.getSketchSize() / 1024),
+           (unsigned long)((ESP.getSketchSize() + ESP.getFreeSketchSpace()) / 1024));
+  printClipped(display, buf);
+
+  // Total flash fitted, and the clock the CPU is running at
+  display->setCursor(0, 46);
+  snprintf(buf, sizeof(buf), "Flash: %luK @ %luMHz",
+           (unsigned long)(ESP.getFlashChipSize() / 1024),
+           (unsigned long)ESP.getCpuFreqMHz());
+  printClipped(display, buf);
+
+  // IDF version this was built against
+  display->setCursor(0, 56);
+  snprintf(buf, sizeof(buf), "SDK: %s", ESP.getSdkVersion());
+  printClipped(display, buf);
+}
+
 // ************************************************************
 // Status screen renderer
 // ************************************************************
@@ -562,6 +598,7 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
     switch (geekInfoPage) {
       case GEEK_PAGE_WIFI:    renderWifiInfoPage(display, width);    break;
       case GEEK_PAGE_STATION: renderStationInfoPage(display, width); break;
+      case GEEK_PAGE_BUILD:   renderBuildInfoPage(display, width);   break;
       default:                renderSystemInfoPage(display, width);  break;
     }
     return;
