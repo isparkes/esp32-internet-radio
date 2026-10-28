@@ -596,6 +596,13 @@ void renderRadioStatus(Adafruit_SH1106G* display, uint8_t width, uint8_t height)
 
   // Geek-info overlay - shown for a short while after the back button is pressed
   if (millis() < geekInfoUntil) {
+    // Holding the back button down pins the current page up: the timeout is
+    // pushed out for as long as it is held, so the page can be read at leisure
+    // and only starts counting down again once the button is released.
+    if (menuSystem.isBackButtonHeld()) {
+      geekInfoUntil = millis() + GEEK_INFO_TIMEOUT_MS;
+      menuSystem.resetActivity();
+    }
     switch (geekInfoPage) {
       case GEEK_PAGE_WIFI:    renderWifiInfoPage(display, width);    break;
       case GEEK_PAGE_STATION: renderStationInfoPage(display, width); break;

@@ -420,6 +420,13 @@ MenuItem *MenuSystem::getItemAtIndex(uint8_t index)
   return item;
 }
 
+// The button ISRs only report edges, so anything that cares about a button
+// being held has to sample the pin for itself.
+bool MenuSystem::isBackButtonHeld() const
+{
+  return digitalRead(backPin) == LOW;
+}
+
 // Check button events
 ButtonEvent MenuSystem::checkButtons()
 {

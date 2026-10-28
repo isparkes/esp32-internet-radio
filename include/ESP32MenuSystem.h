@@ -279,6 +279,7 @@
    void clearMenuItems(MenuItem* menu);  // Free all children of a menu
    void resetActivity();  // Reset screen saver timer
    void resetMenuActivity();  // Reset menu timeout timer
+   bool isBackButtonHeld() const;  // True while the back button is down
  };
  
  #endif // ESP32_MENU_SYSTEM_H

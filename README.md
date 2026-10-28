@@ -2,6 +2,11 @@
 
 An ESP32-based internet radio with an OLED menu system and web interface.
 
+## Documentation
+
+- [USER_MANUAL.md](USER_MANUAL.md) — operating the radio: controls, menu, info pages, web interface, troubleshooting
+- [SPECIFICATION.md](SPECIFICATION.md) — technical specification: architecture, pin assignment, API, storage layout
+
 ## Hardware
 
 - **ESP32-WROVER** (4MB flash + 4MB PSRAM) — PSRAM used for the audio streaming buffer
@@ -32,6 +37,7 @@ An ESP32-based internet radio with an OLED menu system and web interface.
 - **Internet Radio** — MP3 stream decoding with ICY metadata support, up to 9 configurable stations
 - **Stereo Balance** — software L/R balance applied to the decoded samples, set from the Audio menu
 - **OLED Menu System** — hierarchical menu with rotary encoder navigation
+- **Info Pages** — back button cycles system, WiFi, station and build info over the status screen; hold it to keep a page up
 - **Display Blanking** — optional idle timeout that blanks the OLED; any encoder or button input wakes it
 - **Status LED** — rapid flash while booting, dark when stopped, slow flash while playing, medium flash while resyncing
 - **Play at Start** — optionally resume the saved station by itself once WiFi connects after a boot

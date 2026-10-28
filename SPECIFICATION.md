@@ -4,7 +4,7 @@
 
 ESP32-based internet radio that streams MP3 audio over WiFi to an I2S DAC. User interaction via a 128x64 OLED display with rotary encoder and buttons. Remote control via a web interface.
 
-Software version: `INR-ESP32 1.0.0.0`
+Software version: `INR-ESP32 1.0.1.0`
 
 ## System Architecture
 
@@ -127,14 +127,22 @@ Status Screen (default)
           └─ Reset WiFi
 ```
 
-The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 2-second info overlay.
+The status screen shows: title bar, play/stop/resync icon, playback state, volume bar, buffer fill bar, and a scrolling song title. The encoder adjusts volume, confirm button toggles play/stop, encoder click enters the menu, back button shows a 3-second info overlay.
 
-The back button cycles through four info pages, each shown for 2 seconds after the last press. Pressing back while a page is up moves to the next page; once the overlay has timed out, the next press starts again at System Info:
+The back button cycles through four info pages, each shown for `GEEK_INFO_TIMEOUT_MS` (3 seconds) after the last press. Pressing back while a page is up moves to the next page; once the overlay has timed out, the next press starts again at System Info:
 
 1. **System Info** - IP, free heap, streams played, frames decoded, total play time
 2. **WiFi Info** - SSID, IP, gateway, signal strength (dBm and %), MAC address. When not connected: the configured SSID, whether credentials are saved, the WiFi-at-start setting and the MAC address
 3. **Station Info** - station name, position in the station list, stream URL (over two lines), playback state and buffer fill
 4. **Build Info** - firmware version, compile date and time, sketch size against the app partition, flash size and CPU clock, ESP-IDF version
+
+Holding the back button down inhibits the timeout: while the pin reads low,
+`renderRadioStatus()` keeps pushing `geekInfoUntil` out by the full timeout and
+calls `resetActivity()`, so neither the overlay nor the screen saver can take the
+page away. The countdown restarts from the release. The ISRs are edge-triggered
+and report one event per press, so the held state is sampled from the pin by
+`MenuSystem::isBackButtonHeld()`; the press that starts a hold still registers as
+a click ~50 ms in, so a hold parks on the page after the one that was showing.
 
 Menus are rebuilt dynamically when state changes (e.g., WiFi connects/disconnects).
 
