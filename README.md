@@ -1,6 +1,6 @@
 # Internet Radio
 
-An ESP32-based internet radio with an OLED menu system and web interface.
+An ESP32-based internet radio with an OLED menu system and web interface. The radio is limited to 2.4GHz WiFi, determined by the ability of the ESP32 WiFi subsystem. Later versions of the ESP32 might relax this restriction.
 
 ## Documentation
 
@@ -111,3 +111,10 @@ values used on a factory reset or for a config file written before the setting e
 - [ArduinoJson 5](https://github.com/bblanchon/ArduinoJson) — JSON serialization
 - [Adafruit SH110X](https://github.com/adafruit/Adafruit_SH110X) — OLED driver
 - [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library) — graphics primitives
+
+## License
+
+This project is licensed under a strict Attribution-NonCommercial license — see
+[`LICENSE`](LICENSE) for the full text. In short: attribution to Ian Sparkes is required, and
+commercial use is not permitted without a separate written license. The third-party libraries
+listed above remain under their own licenses.

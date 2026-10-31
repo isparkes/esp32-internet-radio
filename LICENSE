@@ -1,0 +1,60 @@
+Internet Radio Firmware License
+Attribution-NonCommercial
+
+Copyright (c) 2025-2026 Ian Sparkes. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, merge, publish, and distribute copies of the Software, subject
+to the following conditions:
+
+1. Attribution
+   Any use, copy, or distribution of the Software, or of any derivative work
+   based on the Software, must give clear and reasonably visible credit to
+   Ian Sparkes as the original author, including:
+     - a copy of this license, and
+     - a statement identifying that the work is based on or derived from
+       this Software, with a link to the original repository where one is
+       available.
+   Attribution must not, in any way, suggest that Ian Sparkes endorses you or
+   your use of the Software.
+
+2. Non-Commercial Use Only
+   The Software, and any derivative work based on it, may be used only for
+   non-commercial purposes. Non-commercial means the use is not primarily
+   intended for or directed toward commercial advantage or monetary
+   compensation. This includes, without limitation, a prohibition on:
+     - selling the Software, hardware built from it, or derivative works;
+     - offering paid products or services that incorporate the Software;
+     - using the Software in the course of any business activity intended to
+       generate revenue or profit.
+   Personal, educational, hobbyist, and other not-for-profit uses are
+   permitted under this license.
+
+3. Derivative Works
+   You may create derivative works (modified versions, forks, ports, or
+   works that incorporate part of the Software) provided such works remain
+   subject to the same Attribution and Non-Commercial requirements set out
+   above, and provided you clearly indicate what changes were made.
+
+4. No Additional Restrictions
+   You may not apply legal terms or technological measures that legally
+   restrict others from doing anything this license permits.
+
+5. Commercial Licensing
+   If you wish to use the Software, or any derivative work based on it, for
+   commercial purposes, you must first obtain a separate written license
+   from Ian Sparkes.
+
+6. Third-Party Components
+   This Software depends on third-party libraries that are distributed under
+   their own licenses. Those components remain subject to their respective
+   licenses, which are not altered by this license.
+
+7. No Warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+   THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+   AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
